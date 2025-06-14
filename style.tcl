@@ -95,7 +95,7 @@ proc zesty::getColorName {color} {
     }
     
     # If it's a hex value, search for corresponding name
-    if {[string match "#*" $color] || [regexp {^[0-9a-fA-F]{6}$} $color]} {
+    if {[zesty::isValidHex $color]} {
         set code [zesty::getColorCode $color]
         if {$code ne ""} {
             return [zesty::getColorName $code]
