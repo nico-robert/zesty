@@ -5,8 +5,6 @@ namespace eval zesty {
     namespace export echo
 }
 
-# Function to build the color dictionary from zesty::tcolor
-# Function to initialize styles
 proc zesty::initStyles {} {
     # Initializes the color and style dictionaries from zesty::tcolor.
     # This procedure builds internal dictionaries for color lookup by name,
@@ -284,6 +282,5 @@ proc zesty::echo {args} {
     }
 }
 
+# Initialize styles.
 zesty::initStyles
-
-namespace import zesty::echo
