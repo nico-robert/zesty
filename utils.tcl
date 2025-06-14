@@ -272,16 +272,6 @@ proc zesty::loop {args} {
     }
 }
 
-
-proc zesty::ProgressBar {args} {
-    # Creates a new progress bar instance.
-    #
-    # args - arguments passed to Bar constructor
-    #
-    # Returns new Bar object.
-    return [zesty::Bar new {*}$args]
-}
-
 proc zesty::findColorByHex {hex_pattern} {
     # Searches for colors matching hexadecimal pattern.
     #

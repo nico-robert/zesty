@@ -23,7 +23,7 @@ proc mycmd {self tid task} {
 
 proc test_progress_extended {} {
 
-    set pb [zesty::ProgressBar \
+    set pb [zesty::Bar new \
         -minColumnWidth 6 \
         -minBarWidth 20 \
         -barChar "#" \
@@ -42,7 +42,7 @@ proc test_progress_extended {} {
     ]
 
 
-    set pb1 [zesty::ProgressBar \
+    set pb1 [zesty::Bar new \
         -minColumnWidth 6 \
         -minBarWidth 20 \
         -barChar "\u2588" \
@@ -150,7 +150,7 @@ proc download_file {filename size {speed 512}} {
     }
 
     # Create a ProgressBar instance with custom configuration
-    set pb [zesty::ProgressBar \
+    set pb [zesty::Bar new \
         -minColumnWidth 10 \
         -minBarWidth 30 \
         -barChar "█" \
