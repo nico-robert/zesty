@@ -104,7 +104,7 @@ zesty::echo text ?options?
 ````
 #### Options:
 
-<div style="overflow-x: auto;">
+<div align="left">
 
 | args           | Description               
 | ------         | ------                    
