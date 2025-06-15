@@ -1,4 +1,7 @@
 # 🍋 zesty
+<p align="center">
+  <img src="examples/zesty.gif">
+</p>
 Create beautiful command-line interfaces with styled text, progress bars, tables, boxes, and JSON formatting.
 
 #### ✨ Features :
@@ -13,7 +16,7 @@ Create beautiful command-line interfaces with styled text, progress bars, tables
 - [Tcl](https://www.tcl.tk/) 8.6 or higher
 - Platform-specific requirements:
   - Windows: 
-    - [twapi](https://github.com/apnadkarni/twapi) or [tcl-cffi](https://github.com/apnadkarni/tcl-cffi)
+    - [twapi](https://github.com/apnadkarni/twapi) or [tcl-cffi](https://github.com/apnadkarni/tcl-cffi) >= 2.0
   - Unix/Linux: 
     - Terminal with ANSI escape sequence support
 - huddle::json package from [Tcllib](https://core.tcl-lang.org/tcllib/doc/trunk/embedded/index.md) (optional for JSON formatting)
