@@ -103,15 +103,32 @@ The `zesty::echo` command provides styled console output:
 zesty::echo text ?options?
 ````
 #### Options:
-
-<div align="left">
-| args           | Description               
-| ------         | ------                    
-| _-style_       | Style specifications      
-| _-n_           | No newline        
-| _-noreset_     | Don't reset formatting      
-| _-filters_     | Apply style filters (num, email, url)
-</div>
+<table>
+  <thead>
+    <tr>
+      <th>args</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>-style</td>
+      <td>Style specifications</td>
+    </tr>
+    <tr>
+      <td>-n</td>
+      <td>No newline</td>
+    </tr>
+    <tr>
+      <td>-noreset</td>
+      <td>Don't reset formatting</td>
+    </tr>
+    <tr>
+      <td>-filters</td>
+      <td>Apply style filters (num, email, url)</td>
+    </tr>
+  </tbody>
+</table>
 
 #### Style Options:
 args                                        |Description
