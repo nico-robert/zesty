@@ -1067,7 +1067,7 @@ proc zesty::computeColumnWidths {data columns available_width separator} {
         }
     }
     
-    # VERIFICATION: calculate total requested width
+    # Calculate total requested width
     set total_requested 0
     foreach width $columns {
         if {$width != -1} {
@@ -1129,7 +1129,7 @@ proc zesty::computeColumnWidths {data columns available_width separator} {
         }
     }
     
-    # VERIFICATION: does fixed space exceed?
+    # How much does fixed space exceed?
     if {$fixed_space > $content_space} {
         # Reduce all fixed columns proportionally
         set scale_factor [expr {double($content_space) / double($fixed_space)}]
@@ -1248,7 +1248,7 @@ proc zesty::formatTableRow {row columns separator styles content_style options} 
             set alignment [lindex $alignments $col_index]
         }
         
-        # IMPORTANT: Column width already includes padding
+        # Column width already includes padding
         # No need to subtract padding here
         set content_width $col_width
         
