@@ -101,9 +101,7 @@ oo::class create zesty::Bar {
         }
    
         # Process constructor arguments with validation
-        if {[llength $args] % 2} {
-            zesty::throwError "Arguments must be in key-value pairs"
-        }
+        zesty::validateKeyValuePairs "args" $args
         
         foreach {key value} $args {
             switch -exact -- $key {
@@ -151,9 +149,8 @@ oo::class create zesty::Bar {
                 -colorBgBarChar     {dict set _options colorBgBarChar $value}
                 -setColumns         {dict set _options setColumns $value}
                 -lineHSeparator     {
-                    if {[llength $value] % 2} {
-                        zesty::throwError "'$key' must be in key-value pairs"
-                    }
+                    zesty::validateKeyValuePairs "$key" $value
+
                     foreach {skey svalue} $value {
                         switch -exact -- $skey {
                             show  {dict set _options lineHSeparator $skey $svalue}
@@ -164,9 +161,7 @@ oo::class create zesty::Bar {
                                 dict set _options lineHSeparator $skey $svalue
                             }
                             style {
-                                if {[llength $svalue] % 2} {
-                                    zesty::throwError "'$skey' must be in key-value pairs"
-                                }
+                                zesty::validateKeyValuePairs "$skey" $svalue
                                 
                                 dict set _options lineHSeparator $skey $svalue
                             }
@@ -175,9 +170,7 @@ oo::class create zesty::Bar {
                     }
                 }
                 -headers {
-                    if {[llength $value] % 2} {
-                        zesty::throwError "'$key' must be in key-value pairs"
-                    }
+                    zesty::validateKeyValuePairs "$key" $value
                     
                     foreach {skey svalue} $value {
                         switch -exact -- $skey {
@@ -279,18 +272,15 @@ oo::class create zesty::Bar {
         # config - dictionary of column headers in key-value pairs
         #
         # Returns: nothing.
-        if {[llength $config] % 2} {
-            zesty::throwError "Arguments must be in key-value pairs"
-        }
+
+        zesty::validateKeyValuePairs "headers" $config
 
         if {![dict get $_options headers show]} {
             zesty::throwError "Headers are not enabled"
         }
 
         foreach {key value} $config {
-            if {[llength $value] % 2} {
-                zesty::throwError "Arguments must be in key-value pairs"
-            }
+            zesty::validateKeyValuePairs "$key" $value
             my ConfigureHeader $key $value
         }
         
@@ -341,9 +331,7 @@ oo::class create zesty::Bar {
                 set width [dict get $column_widths $key]
                 set data  [my GetHeaderText $key]
 
-                if {[llength $data] % 2} {
-                    zesty::throwError "Arguments must be in key-value pairs"
-                }
+                zesty::validateKeyValuePairs "data" $data
                 
                 if {![dict exists $data name]} {
                     zesty::throwError "Error: header configuration must contain 'name' key"
@@ -681,9 +669,8 @@ method RenderSpinner {task_id width} {
             zesty::throwError "Column '$num' does not exist"
         }
         
-        if {[llength $args] % 2} {
-            zesty::throwError "Arguments must be in key-value pairs"
-        }
+        # Validate args
+        zesty::validateKeyValuePairs "args" $args
         
         foreach {key value} $args {
             switch -exact -- $key {
@@ -710,9 +697,7 @@ method RenderSpinner {task_id width} {
                     dict set _column_configs $num spinnerStyle $value
                 }
                 -style {
-                    if {[llength $value] % 2} {
-                        zesty::throwError "Arguments must be in key-value pairs"
-                    }
+                    zesty::validateKeyValuePairs "$key" $value
 
                     dict set _column_configs $num style $value
                 }
@@ -740,9 +725,8 @@ method RenderSpinner {task_id width} {
             zesty::throwError "Column $num already exists"
         }
         
-        if {[llength $args] % 2} {
-            zesty::throwError "Arguments must be in key-value pairs"
-        }
+        # Validate args
+        zesty::validateKeyValuePairs "args" $args
 
         dict set _column_configs $num visible 1
         dict set _column_configs $num width 20
@@ -773,9 +757,7 @@ method RenderSpinner {task_id width} {
                     dict set _column_configs $num spinnerStyle $value
                 }
                 -style {
-                    if {[llength $value] % 2} {
-                        zesty::throwError "Arguments must be in key-value pairs"
-                    }
+                    zesty::validateKeyValuePairs "$key" $value
 
                     dict set _column_configs $num style $value
                 }

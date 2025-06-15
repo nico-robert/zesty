@@ -135,18 +135,14 @@ oo::class create zesty::Table {
                 }
                 -title  - 
                 -caption {
-                    if {[llength $value] % 2} {
-                        zesty::throwError "'$key' must be in key-value pairs"
-                    }
+                    zesty::validateKeyValuePairs "$key" $value
                     set key [string trimleft $key "-"]
 
                     foreach {skey svalue} $value {
                         switch -exact -- $skey {
                             name     {dict set _options $key $skey $svalue}
                             style    {
-                                if {[llength $svalue] % 2} {
-                                    zesty::throwError "'$skey' must be in key-value pairs"
-                                }
+                                zesty::validateKeyValuePairs "$skey" $svalue
                                 dict set _options $key $skey $svalue
                             }
                             justify  {
@@ -165,9 +161,7 @@ oo::class create zesty::Table {
                     }
                 }
                 -box {
-                    if {[llength $value] % 2} {
-                        zesty::throwError "'$key' must be in key-value pairs"
-                    }
+                    zesty::validateKeyValuePairs "$key" $value
                     foreach {skey svalue} $value {
                         switch -exact -- $skey {
                             type  {
@@ -181,9 +175,7 @@ oo::class create zesty::Table {
                                 dict set _options box $skey $svalue
                             }
                             style {
-                                if {[llength $svalue] % 2} {
-                                    zesty::throwError "'$skey' must be in key-value pairs"
-                                }
+                                zesty::validateKeyValuePairs "$skey" $svalue
                                 dict set _options box $skey $svalue
                             }
                             default {zesty::throwError "'$skey' not supported."}  
@@ -193,18 +185,14 @@ oo::class create zesty::Table {
                 -lines  -
                 -header -
                 -footer {
-                    if {[llength $value] % 2} {
-                        zesty::throwError "'$key' must be in key-value pairs"
-                    }
+                    zesty::validateKeyValuePairs "$key" $value
                     set key [string trimleft $key "-"]
 
                     foreach {skey svalue} $value {
                         switch -exact -- $skey {
                             show  {dict set _options $key $skey $svalue}
                             style {
-                                if {[llength $svalue] % 2} {
-                                    zesty::throwError "'$skey' must be in key-value pairs"
-                                }
+                                zesty::validateKeyValuePairs "$skey" $svalue
                                 dict set _options $key $skey $svalue
                             }
                             default {zesty::throwError "'$skey' not supported."}  

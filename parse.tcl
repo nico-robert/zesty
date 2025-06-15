@@ -106,16 +106,12 @@ proc zesty::parseTypeFilters {text filters} {
     # Returns: the text with type-specific styling applied.
     set result $text
 
-    if {[llength $filters] % 2} {
-        zesty::throwError "Arguments must be in key-value pairs"
-    }
+    zesty::validateKeyValuePairs "args" $filters
     
     # Process each filter
     foreach {key style} $filters {
-
-        if {[llength $style] % 2} {
-             zesty::throwError "'style' must be in key-value pairs"
-        }
+        # Validate style
+        zesty::validateKeyValuePairs "style" $style
 
         set pattern {}
         
@@ -227,9 +223,7 @@ proc zesty::parseStyleDictToXML {text style_dict} {
     }
 
     # Process constructor arguments with validation
-    if {[llength $style_dict] % 2} {
-        zesty::throwError "Arguments must be in key-value pairs"
-    }
+    zesty::validateKeyValuePairs "args" $style_dict
     
     # Build general style attributes
     set general_attrs {}

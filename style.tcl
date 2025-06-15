@@ -259,9 +259,8 @@ proc zesty::echo {args} {
     
     # Mode with base style + inline tags
     if {[llength $styleList] > 0} {
-        if {[llength $styleList] % 2} {
-            zesty::throwError "Arguments must be in key-value pairs"
-        }
+        # Check if arguments are in key-value pairs
+        zesty::validateKeyValuePairs "-style" $styleList
     }
 
     set output [zesty::parseStyle \

@@ -32,11 +32,11 @@ proc zesty::getTermHeight {handle} {
                 set height [lindex $sttyOut 0]
             } elseif {![catch {exec tput lines $null} height]} {
             } else {
-                error "Impossible to find height for systems Unix/Linux"
+                zesty::throwError "Impossible to find height for systems Unix/Linux"
             }
         }
     } msg]} {
-        error $msg
+        zesty::throwError $msg
     }
 
     return $height
@@ -58,11 +58,11 @@ proc zesty::getTermWidth {handle} {
                 set width [lindex $sttyOut 1]
             } elseif {![catch {exec tput cols $null} width]} {
             } else {
-                error "Impossible to find width for systems Unix/Linux"
+                zesty::throwError "Impossible to find width for systems Unix/Linux"
             }
         }
     } msg]} {
-        error $msg
+        zesty::throwError $msg
     }
             
     return $width
@@ -94,15 +94,15 @@ proc zesty::getCursorPosition {handle} {
 
     if {[zesty::isWindows]} {
         if {$handle eq "null"} {
-            error "Windows console 'handle' not available."
+            zesty::throwError "Windows console 'handle' not available."
         }
 
         return [zesty::getConsoleCursorPosition $handle]
         
     } else {
         set old_tty_settings ""
-        if {[catch {set old_tty_settings [exec stty -g <@stdin]} error]} {
-            error "Could not get terminal settings: $error"
+        if {[catch {set old_tty_settings [exec stty -g <@stdin]} msg]} {
+            zesty::throwError "Could not get terminal settings: $msg"
         }
         # Unix
         try {
@@ -120,7 +120,7 @@ proc zesty::getCursorPosition {handle} {
             if {[regexp {\[(\d+);(\d+)R} $response -> y x]} {
                 return [list $x $y]
             } else {
-                error "Could not parse cursor position response: $response"
+                zesty::throwError "Could not parse cursor position response: $response"
             }
         } finally {
             if {$old_tty_settings ne ""} {
@@ -176,45 +176,6 @@ proc zesty::run {delay current end body} {
 }
 
 
-proc zesty::_loop {args} {
-    # Creates an asynchronous loop with specified parameters.
-    #
-    # args - variable arguments supporting:
-    #   -delay {milliseconds} - delay between iterations
-    #   -start {number}       - starting value
-    #   -end {number}         - ending value (exclusive)
-    #   body                  - loop body code to execute
-    #
-    # Returns nothing.
-    set delay 1000
-    set start 0
-    set end 100
-    set body [lindex $args end]
-    set args [lrange $args 0 end-1]
-    
-    # Extract body (last argument)
-    if {$body eq ""} {
-        error "No loop body provided"
-    }
-    if {[llength $args] % 2} {
-        error "Arguments must be in key-value pairs"
-    }
-    
-    foreach {key value} $args {
-        switch -exact -- $key {
-            -delay  {set delay $value}
-            -start  {set start $value}
-            -end    {set end $value}
-            default {error "'$key' not supported"}  
-        }
-    }
-    set ::token 0
-    zesty::run $delay $start $end $body
-    # Wait for loop completion
-    vwait $::token
-
-}
-
 proc zesty::loop {args} {
     # Creates an asynchronous loop with specified parameters.
     #
@@ -233,18 +194,17 @@ proc zesty::loop {args} {
     
     # Extract body (last argument)
     if {$body eq ""} {
-        error "No loop body provided"
+        zesty::throwError "No loop body provided"
     }
-    if {[llength $args] % 2} {
-        error "Arguments must be in key-value pairs"
-    }
+    # Validate arguments
+    zesty::validateKeyValuePairs "args" $args
     
     foreach {key value} $args {
         switch -exact -- $key {
             -delay  {set delay $value}
             -start  {set start $value}
             -end    {set end $value}
-            default {error "'$key' non supporté"}
+            default {zesty::throwError "'$key' non supporté"}
         }
     }
     
@@ -257,7 +217,7 @@ proc zesty::loop {args} {
     coroutine $coro_name apply {{start end delay resolved_body token coro_name} {
         for {set i $start} {$i < $end} {incr i} {
             if {[catch {eval $resolved_body} err]} {
-                error "$err"
+                zesty::throwError "$err"
             }
             after $delay [list $coro_name]
             yield
@@ -410,7 +370,7 @@ proc zesty::hexToRGB {hex} {
     # or throws error if hex format is invalid.
 
     if {![zesty::isValidHex $hex]} {
-        error "Invalid hex format: $hex"
+        zesty::throwError "Invalid hex format: $hex"
     }
 
     # Remove # if present
@@ -538,7 +498,7 @@ proc zesty::findClosestColor {target_hex} {
     variable tcolor
 
     if {![info exists tcolor]} {
-        error "Error: zesty::tcolor not available"
+        zesty::throwError "zesty::tcolor not available"
     }
     
     set target_rgb [zesty::hexToRGB $target_hex]
@@ -651,7 +611,7 @@ proc zesty::getColorHex {color} {
 
     # Check if zesty::tcolor exists
     if {![info exists tcolor]} {
-        error "Warning: zesty::tcolor not found."
+        zesty::throwError "Warning: zesty::tcolor not found."
     }
 
     set code [zesty::getColorCode $color]
@@ -959,13 +919,9 @@ proc zesty::strLength {text} {
     #
     # Returns the visual width of the string.
 
-    # Handle empty string case
     if {$text eq ""} {return 0}
-    
-    # Initialize width counter
     set width 0
 
-    # Iterate through each character in the string
     for {set i 0} {$i < [string length $text]} {incr i} {
         set char [string index $text $i]
         set codepoint [scan $char %c]
@@ -994,4 +950,68 @@ proc zesty::strLength {text} {
     }
     
     return $width
+}
+
+
+proc zesty::throwError {msg} {
+    # Throws an error.
+    #
+    # msg - error message
+    #
+    # Returns error message. 
+
+    zesty::resetTerminal
+    zesty::showCursor
+
+    return -code error "zesty(error): $msg"
+}
+
+proc zesty::validateKeyValuePairs {key value} {
+    # Checks if arguments are in key-value pairs.
+    #
+    # key   - key name.
+    # value - list of arguments.
+    #
+    # Returns nothing or an error message if invalid.
+
+    if {[llength $value] % 2} {
+        set msg "wrong # args: '$key' must be in key-value pairs"
+        return -level [info level] -code error $msg
+    }
+
+}
+
+proc zesty::setdef {d key args} {
+    # Set dict definition with value type and default value.
+    # An error exception is raised if args value is not found.
+    # 
+    # d    - dict
+    # key  - dict key
+    # args - type, default, version, validvalue, trace.
+    #
+    # Returns dictionary
+    upvar 1 $d _dict
+    set default {}
+
+    foreach {k value} $args {
+        switch -exact -- $k {
+            -validvalue   {set validvalue $value}
+            -type         {set type       $value}
+            -default      {set default    $value}
+            -with         {
+                foreach line [split $value "\n"] {
+                    if {$line eq ""} {continue}
+                    if {[string match "*-with*" $line]} {
+
+                    }
+                    # puts [lindex $line 0]
+                    # puts >>>$line
+                    # zesty::setdef $d {*}$line
+                } 
+            }
+            default {zesty::throwError "Unknown key '$k' specified"}
+        }
+    }
+
+    dict set _dict $key [list $default $type $validvalue]
 }

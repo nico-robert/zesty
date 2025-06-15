@@ -35,17 +35,14 @@ proc zesty::jsonDecode {args} {
     }
 
     # Process constructor arguments with validation
-    if {[llength $args] % 2} {
-        zesty::throwError "Arguments must be in key-value pairs"
-    }
+    zesty::validateKeyValuePairs "args" $args
 
     foreach {key value} $args {
         switch -exact -- $key {
             -json            {dict set options json $value}
             -dumpJSONOptions {
-                if {[llength $value] % 2} {
-                    zesty::throwError "'$key' must be in key-value pairs"
-                }
+                zesty::validateKeyValuePairs "$key" $value
+
                 foreach {dumpkey dumpvalue} $value {
                     switch -exact -- $dumpkey {
                         offset  -
@@ -56,14 +53,9 @@ proc zesty::jsonDecode {args} {
                 }
             }
             -style {
-                if {[llength $value] % 2} {
-                    zesty::throwError "'$key' must be in key-value pairs"
-                }
+                zesty::validateKeyValuePairs "$key" $value
                 foreach {skey svalue} $value {
-
-                    if {[llength $svalue] % 2} {
-                        zesty::throwError "'$skey' must be in key-value pairs"
-                    }
+                    zesty::validateKeyValuePairs "$skey" $svalue
                     switch -exact -- $skey {
                         key     -
                         str     -

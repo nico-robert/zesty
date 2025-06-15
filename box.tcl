@@ -66,9 +66,7 @@ proc zesty::box {args} {
     }
 
     # Process constructor arguments with validation
-    if {[llength $args] % 2} {
-        zesty::throwError "Arguments must be in key-value pairs"
-    }
+    zesty::validateKeyValuePairs "args" $args
 
     foreach {key value} $args {
         switch -exact -- $key {
@@ -92,16 +90,13 @@ proc zesty::box {args} {
                 dict set options paddingY $value
             }
             -title   {
-                if {[llength $value] % 2} {
-                    zesty::throwError "'$key' must be in key-value pairs"
-                }
+                zesty::validateKeyValuePairs "$key" $value
+
                 foreach {skey svalue} $value {
                     switch -exact -- $skey {
                         name     {dict set options title $skey $svalue}
                         style    {
-                            if {[llength $svalue] % 2} {
-                                zesty::throwError "'$skey' must be in key-value pairs"
-                            }
+                            zesty::validateKeyValuePairs "$skey" $svalue
                             dict set options title $skey $svalue
                         }
                         anchor  {
@@ -120,9 +115,8 @@ proc zesty::box {args} {
                 }
             }
             -content {
-                if {[llength $value] % 2} {
-                    zesty::throwError "'$key' must be in key-value pairs"
-                }
+                zesty::validateKeyValuePairs "$key" $value
+
                 foreach {skey svalue} $value {
                     switch -exact -- $skey {
                         text  {dict set options content $skey $svalue}
@@ -133,15 +127,11 @@ proc zesty::box {args} {
                             dict set options content $skey $svalue
                         }
                         style {
-                            if {[llength $svalue] % 2} {
-                                zesty::throwError "'$skey' must be in key-value pairs"
-                            }
+                            zesty::validateKeyValuePairs "$skey" $svalue
                             dict set options content $skey $svalue
                         }
                         table {
-                            if {[llength $svalue] % 2} {
-                                zesty::throwError "'$skey' must be in key-value pairs"
-                            }
+                            zesty::validateKeyValuePairs "$skey" $svalue
                             foreach {tkey tvalue} $svalue {
                                 switch -exact -- $tkey {
                                     enabled {
@@ -183,9 +173,7 @@ proc zesty::box {args} {
                 }                
             }
             -box {
-                if {[llength $value] % 2} {
-                    zesty::throwError "'$key' must be in key-value pairs"
-                }
+                zesty::validateKeyValuePairs "$key" $value
                 foreach {skey svalue} $value {
                     switch -exact -- $skey {
                         type  {
@@ -199,9 +187,7 @@ proc zesty::box {args} {
                             dict set options box $skey $svalue
                         }
                         style {
-                            if {[llength $svalue] % 2} {
-                                zesty::throwError "'$skey' must be in key-value pairs"
-                            }
+                            zesty::validateKeyValuePairs "$skey" $svalue
                             dict set options box $skey $svalue
                         }
                         size {
