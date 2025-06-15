@@ -73,7 +73,7 @@ $table display
 Boxes
 ```tcl
 # Simple box with title
-set box [zesty::box \
+zesty::echo [zesty::box \
     -title {name "Info" anchor "nc"} \
     -content {text "Your content here"} \
     -padding 2
@@ -103,12 +103,17 @@ The `zesty::echo` command provides styled console output:
 zesty::echo text ?options?
 ````
 #### Options:
+
+<div style="overflow-x: auto;">
+
 | args           | Description               
 | ------         | ------                    
 | _-style_       | Style specifications      
 | _-n_           | No newline        
 | _-noreset_     | Don't reset formatting      
-| _-filters_     | Apply style filters (num, email, url)    
+| _-filters_     | Apply style filters (num, email, url)
+
+</div>
 
 #### Style Options:
 args                                        |Description
@@ -119,11 +124,11 @@ args                                        |Description
  
 ###  Progress Bars
 > [!IMPORTANT]    
-> The `zesty::Bar` class relies heavily on Tcl's event loop for rendering updates and animations. This has critical implications for your application design .Any blocking operation (e.g., after ms, vwait, synchronous I/O) will suspend the event loop and freeze progress bar updates.
+> The `zesty::Bar` class relies heavily on Tcl's event loop for rendering updates and animations. 
+This has critical implications for your application design.
+Any blocking operation (e.g., `after` ms, `vwait`, synchronous I/O) will suspend the event loop and freeze progress bar updates.
 
-The progress bar uses after idle callbacks to schedule rendering operations. 
-
-Create multi-task progress displays with animations:
+Create a progress bar with default columns and options :
 ```tcl
 set bar [zesty::Bar new ?options?]
 ```
@@ -158,7 +163,7 @@ set bar [zesty::Bar new ?options?]
 - zSeparator - Column separator
 
 > [!TIP]    
-> - You can create your own column types.   
+> You can create your own column types.   
 
 ### Tables
 Create formatted tables with automatic sizing:
@@ -215,9 +220,10 @@ args                            |Description
 ### 🎨 Color support :  
 `zesty` supports multiple color formats:
 ```tcl
+# See colors.tcl (palette (0-255) if supported) file for more details.
 # Named colors
 -style {fg "red"}
-# 256-color palette (0-255)
+# Numbered colors.
 -style {fg 196}
 # Hex colors
 -style {fg "#FF5733"}
