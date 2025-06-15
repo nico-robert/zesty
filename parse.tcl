@@ -353,6 +353,6 @@ proc zesty::parseContentLine {line} {
     return [list \
         original_line $line \
         parsed_line $parsed_line \
-        visible_length [string length $parsed_line] \
+        visible_length [zesty::strLength $parsed_line] \
     ]
 }

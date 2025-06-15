@@ -212,7 +212,7 @@ proc zesty::box {args} {
     set title_visible_length 0
 
     if {$title ne ""} {
-        set title_visible_length [string length [zesty::extractVisibleText $title]]
+        set title_visible_length [zesty::strLength [zesty::extractVisibleText $title]]
         set title_style [dict get $options title style]
         set title [zesty::parseStyleDictToXML $title $title_style]
     }
@@ -295,7 +295,7 @@ proc zesty::box {args} {
             
             # Apply horizontal truncation if target width known
             if {$box_content_width > 0} {
-                set visible_length [string length [zesty::extractVisibleText $line]]
+                set visible_length [zesty::strLength [zesty::extractVisibleText $line]]
                 if {$visible_length > $box_content_width} {
                     set line [zesty::smartTruncateStyledText $line $box_content_width 1]
                 }
@@ -1057,7 +1057,7 @@ proc zesty::computeColumnWidths {data columns available_width separator} {
     foreach row $data {
         for {set col 0} {$col < $num_cols} {incr col} {
             set cell [lindex $row $col]
-            set visible_length [string length [zesty::extractVisibleText $cell]]
+            set visible_length [zesty::strLength [zesty::extractVisibleText $cell]]
             
             # Update maximum
             set current_max [lindex $max_widths $col]
