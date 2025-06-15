@@ -428,7 +428,7 @@ proc test_mixed_nowrap {} {
     $table destroy
 }
 
-proc run_all_demos {} {
+proc run_all_tests {} {
     # Run all demonstration functions
     test_basic_table
     test_styled_table  
