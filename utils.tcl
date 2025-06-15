@@ -980,38 +980,3 @@ proc zesty::validateKeyValuePairs {key value} {
     }
 
 }
-
-proc zesty::setdef {d key args} {
-    # Set dict definition with value type and default value.
-    # An error exception is raised if args value is not found.
-    # 
-    # d    - dict
-    # key  - dict key
-    # args - type, default, version, validvalue, trace.
-    #
-    # Returns dictionary
-    upvar 1 $d _dict
-    set default {}
-
-    foreach {k value} $args {
-        switch -exact -- $k {
-            -validvalue   {set validvalue $value}
-            -type         {set type       $value}
-            -default      {set default    $value}
-            -with         {
-                foreach line [split $value "\n"] {
-                    if {$line eq ""} {continue}
-                    if {[string match "*-with*" $line]} {
-
-                    }
-                    # puts [lindex $line 0]
-                    # puts >>>$line
-                    # zesty::setdef $d {*}$line
-                } 
-            }
-            default {zesty::throwError "Unknown key '$k' specified"}
-        }
-    }
-
-    dict set _dict $key [list $default $type $validvalue]
-}
