@@ -1,5 +1,5 @@
 namespace eval zesty {
-    variable tcolor [dict create]
+    variable tcolor {}
 }
 
 # 256 Extended Colors Correspondence (8-bit)
@@ -23,9 +23,6 @@ dict set zesty::tcolor 14 {name {Light Cyan}    hex "#00ffff"}
 dict set zesty::tcolor 15 {name White           hex "#ffffff"}
 
 # 2. 6x6x6 Color Palette (16-231)
-
-# This section is organized according to the 6x6x6 RGB cube. Each color is calculated as follows:
-# `16 + (36 × r) + (6 × g) + b` where r, g, b are values from 0 to 5.
 
 dict set zesty::tcolor 16 {name Black2                   hex "#000000"}
 dict set zesty::tcolor 17 {name {Dark Navy Blue}         hex "#00005f"}
