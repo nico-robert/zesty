@@ -106,21 +106,15 @@ oo::class create zesty::Bar {
         foreach {key value} $args {
             switch -exact -- $key {
                 -minColumnWidth    {
-                    if {![string is integer -strict $value] || $value < 1} {
-                        zesty::throwError "'$key' must be a positive integer"
-                    }
+                    zesty::isPositiveIntegerValue $key $value 1
                     dict set _options minColumnWidth $value
                 }
                 -minBarWidth {
-                    if {![string is integer -strict $value] || $value < 5} {
-                        zesty::throwError "'$key' must be >= 5"
-                    }
+                    zesty::isPositiveIntegerValue $key $value 5
                     dict set _options minBarWidth $value
                 }
                 -ellipsisThreshold {
-                    if {![string is integer -strict $value] || $value < 0} {
-                        zesty::throwError "'$key' must be >= 0"
-                    }
+                    zesty::isPositiveIntegerValue $key $value
                     dict set _options ellipsisThreshold $value
                 }
                 -barChar            {dict set _options barChar $value}
@@ -140,9 +134,7 @@ oo::class create zesty::Bar {
                     dict set _options indeterminateBarStyle $value
                 }
                 -spinnerFrequency {
-                    if {![string is integer -strict $value] || $value < 1} {
-                        zesty::throwError "'$key' must be a positive integer"
-                    }
+                    zesty::isPositiveIntegerValue $key $value 1
                     dict set _options spinnerFrequency $value
                 }
                 -colorBarChar       {dict set _options colorBarChar $value}
@@ -676,9 +668,7 @@ method RenderSpinner {task_id width} {
             switch -exact -- $key {
                 -visible {dict set _column_configs $num visible $value}
                 -width   {
-                    if {![string is integer -strict $value] || ($value < 1)} {
-                        zesty::throwError "width must be a positive integer"
-                    }
+                    zesty::isPositiveIntegerValue $key $value 1
                     dict set _column_configs $num width $value
                 }
                 -type   {dict set _column_configs $num type $value}
@@ -736,9 +726,7 @@ method RenderSpinner {task_id width} {
             switch -exact -- $key {
                 -visible {dict set _column_configs $num visible $value}
                 -width {
-                    if {![string is integer -strict $value] || ($value < 1)} {
-                        zesty::throwError "width must be a positive integer"
-                    }
+                    zesty::isPositiveIntegerValue $key $value 1
                     dict set _column_configs $num width $value
                 }
                 -type   {dict set _column_configs $num type $value}
@@ -813,15 +801,11 @@ method RenderSpinner {task_id width} {
             switch -exact -- $key {
                 -name  {dict set _tasks $task_id description $value}
                 -total {
-                    if {![string is integer -strict $value] || $value < 0} {
-                        zesty::throwError "total must be a non-negative integer"
-                    }
+                    zesty::isPositiveIntegerValue $key $value
                     dict set _tasks $task_id total $value
                 }
                 -completed {
-                    if {![string is integer -strict $value] || $value < 0} {
-                        zesty::throwError "completed must be a non-negative integer"
-                    }
+                    zesty::isPositiveIntegerValue $key $value
                     dict set _tasks $task_id completed $value
                 }
                 -mode  {
@@ -876,15 +860,11 @@ method RenderSpinner {task_id width} {
         foreach {key value} $args {
             switch -- $key {
                 -total {
-                    if {![string is integer -strict $value] || $value < 0} {
-                        zesty::throwError "total must be a non-negative integer"
-                    }
+                    zesty::isPositiveIntegerValue $key $value
                     dict set _tasks $task_id total $value
                 }
                 -completed {
-                    if {![string is integer -strict $value] || $value < 0} {
-                        zesty::throwError "completed must be a non-negative integer"
-                    }
+                    zesty::isPositiveIntegerValue $key $value
                     dict set _tasks $task_id completed $value
                     dict set _tasks $task_id mode "determinate"
                 }

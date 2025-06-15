@@ -71,22 +71,16 @@ proc zesty::box {args} {
     foreach {key value} $args {
         switch -exact -- $key {
             -padding    {
-                if {![string is integer -strict $value] || $value < 0} {
-                    zesty::throwError "'$key' must be a non-negative integer"
-                }
+                zesty::isPositiveIntegerValue $key $value
                 dict set options paddingX $value
                 dict set options paddingY $value
             }
             -paddingX    {
-                if {![string is integer -strict $value] || $value < 0} {
-                    zesty::throwError "'$key' must be a non-negative integer"
-                }
+                zesty::isPositiveIntegerValue $key $value
                 dict set options paddingX $value
             }
             -paddingY    {
-                if {![string is integer -strict $value] || $value < 0} {
-                    zesty::throwError "'$key' must be a non-negative integer"
-                }
+                zesty::isPositiveIntegerValue $key $value
                 dict set options paddingY $value
             }
             -title   {
@@ -135,9 +129,7 @@ proc zesty::box {args} {
                             foreach {tkey tvalue} $svalue {
                                 switch -exact -- $tkey {
                                     enabled {
-                                        if {![string is boolean -strict $tvalue]} {
-                                            zesty::throwError "'enabled' must be a boolean value"
-                                        }
+                                        zesty::isBooleanValue $tkey $tvalue
                                         dict set options content table $tkey $tvalue
                                     }
                                     columns {
@@ -158,13 +150,9 @@ proc zesty::box {args} {
                                         }
                                         dict set options content table $tkey $tvalue
                                     }
-                                    separator {
-                                        dict set options content table $tkey $tvalue
-                                    }
-                                    styles {
-                                        dict set options content table $tkey $tvalue
-                                    }
-                                    default {zesty::throwError "'$tkey' not supported in table."}
+                                    separator {dict set options content table $tkey $tvalue}
+                                    styles    {dict set options content table $tkey $tvalue}
+                                    default   {zesty::throwError "'$tkey' not supported in table."}
                                 }
                             }
                         }
@@ -192,21 +180,17 @@ proc zesty::box {args} {
                         }
                         size {
                             if {[llength $svalue] != 2} {
-                                zesty::throwError "'$skey' must be a list of two integers {width height}"
+                                zesty::throwError "'$skey' must be a list of two\
+                                                    integers {width height}"
                             }
                             lassign $svalue width height
-                            if {
-                                ![string is integer -strict $width] ||
-                                ![string is integer -strict $height]
-                            } {
-                                zesty::throwError "'$skey' must contain positive integers"
-                            }
+                            # validate width and height
+                            zesty::isPositiveIntegerValue $skey $width
+                            zesty::isPositiveIntegerValue $skey $height
                             dict set options box size $svalue
                         }
                         fullScreen {
-                            if {![string is boolean -strict $svalue]} {
-                                zesty::throwError "'$skey' must be a boolean value"
-                            }
+                            zesty::isBooleanValue $skey $svalue
                             dict set options box fullScreen $svalue
                         }
                         default {zesty::throwError "'$skey' not supported."}  

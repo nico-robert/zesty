@@ -122,15 +122,11 @@ oo::class create zesty::Table {
                 -continuousScroll -
                 -autoScroll {dict set _options [string trimleft $key "-"] $value}
                 -padding    {
-                    if {![string is integer -strict $value] || $value < 0} {
-                        zesty::throwError "'$key' must be a non-negative integer"
-                    }
+                    zesty::isPositiveIntegerValue $key $value
                     dict set _options padding $value
                 }
                 -maxVisibleLines    {
-                    if {![string is integer -strict $value] || $value < 0} {
-                        zesty::throwError "'$key' must be a non-negative integer"
-                    }
+                    zesty::isPositiveIntegerValue $key $value
                     dict set _options maxVisibleLines $value
                 }
                 -title  - 

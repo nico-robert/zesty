@@ -975,8 +975,38 @@ proc zesty::validateKeyValuePairs {key value} {
     # Returns nothing or an error message if invalid.
 
     if {[llength $value] % 2} {
-        set msg "wrong # args: '$key' must be in key-value pairs"
+        set msg "wrong # args: '$key' must be in key-value pairs."
         return -level [info level] -code error $msg
     }
+}
 
+proc zesty::isPositiveIntegerValue {key value {limit 0}} {
+    # Checks if key value is a positive integer.
+    #
+    # key   - key name.
+    # value - integer value.
+    # limit - minimum value
+    #
+    # Returns nothing or an error message if invalid.
+
+    if {![string is integer -strict $value] || ($value < $limit)} {
+        if {$limit > 0} {
+            zesty::throwError "'$key' must be greater than $limit."
+        } else {
+            zesty::throwError "'$key' must be a positive integer."
+        }
+    }
+}
+
+proc zesty::isBooleanValue {key value} {
+    # Checks if key value is boolean value.
+    #
+    # key   - key name.
+    # value - integer value.
+    #
+    # Returns nothing or an error message if invalid.
+
+    if {![string is boolean -strict $value]} {
+        zesty::throwError "'$key' must be a boolean value."
+    }
 }
