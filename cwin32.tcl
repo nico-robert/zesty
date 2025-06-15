@@ -213,7 +213,7 @@ proc zesty::getInfoConsole {handle} {
     # Returns: console screen buffer info dictionary or throws error
     # if the operation fails.
     if {![k32::GetConsoleScreenBufferInfo $handle default]} {
-        error "zesty(error): console screen buffer information fails."
+        zesty::throwError "console screen buffer information fails."
     }
     
     return $default
@@ -229,7 +229,7 @@ proc zesty::getInfoProcess {pid} {
     set handle [k32::CreateToolhelp32Snapshot TH32CS_SNAPPROCESS 0]
     
     if {[cffi::pointer isnull $handle]} {
-        error "zesty(error): handle is null."
+        zesty::throwError "handle is null."
     }
 
     k32::Process32First $handle dictinfo
@@ -283,7 +283,7 @@ proc zesty::GetStdOutHandle {} {
     set handle [k32::GetStdHandle STD_OUTPUT_HANDLE]
     
     if {[cffi::pointer isnull $handle]} {
-        error "zesty(error): stdout handle is null."
+        zesty::throwError "stdout handle is null."
     }
     
     return $handle
@@ -314,7 +314,7 @@ proc zesty::setColorDefaultConsole {} {
     set attr   [dict get $info wAttributes]
 
     if {![k32::SetConsoleTextAttribute $handle $attr]} {
-        error "zesty(error): console text attribute fails."
+        zesty::throwError "console text attribute fails."
     }
     
     return {}
@@ -342,7 +342,7 @@ proc zesty::getConsoleCursorPosition {handle} {
     # Returns: list containing X and Y coordinates of cursor position
     # or throws error if operation fails.
     if {![k32::GetConsoleScreenBufferInfo $handle info]} {
-        error "Could not get console screen buffer info"
+        zesty::throwError "Could not get console screen buffer info"
     }
     
     return [list \

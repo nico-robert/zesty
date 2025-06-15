@@ -67,40 +67,40 @@ proc zesty::box {args} {
 
     # Process constructor arguments with validation
     if {[llength $args] % 2} {
-        error "Arguments must be in key-value pairs"
+        zesty::throwError "Arguments must be in key-value pairs"
     }
 
     foreach {key value} $args {
         switch -exact -- $key {
             -padding    {
                 if {![string is integer -strict $value] || $value < 0} {
-                    error "'$key' must be a non-negative integer"
+                    zesty::throwError "'$key' must be a non-negative integer"
                 }
                 dict set options paddingX $value
                 dict set options paddingY $value
             }
             -paddingX    {
                 if {![string is integer -strict $value] || $value < 0} {
-                    error "'$key' must be a non-negative integer"
+                    zesty::throwError "'$key' must be a non-negative integer"
                 }
                 dict set options paddingX $value
             }
             -paddingY    {
                 if {![string is integer -strict $value] || $value < 0} {
-                    error "'$key' must be a non-negative integer"
+                    zesty::throwError "'$key' must be a non-negative integer"
                 }
                 dict set options paddingY $value
             }
             -title   {
                 if {[llength $value] % 2} {
-                    error "'$key' must be in key-value pairs"
+                    zesty::throwError "'$key' must be in key-value pairs"
                 }
                 foreach {skey svalue} $value {
                     switch -exact -- $skey {
                         name     {dict set options title $skey $svalue}
                         style    {
                             if {[llength $svalue] % 2} {
-                                error "'$skey' must be in key-value pairs"
+                                zesty::throwError "'$skey' must be in key-value pairs"
                             }
                             dict set options title $skey $svalue
                         }
@@ -111,49 +111,49 @@ proc zesty::box {args} {
                                     [join [lrange $titleAnchor 0 end-1] ", "] \
                                     [lindex $titleAnchor end] \
                                 ]
-                                error "'$svalue' must be one of: $keyType"
+                                zesty::throwError "'$svalue' must be one of: $keyType"
                             }
                             dict set options title $skey $svalue
                         }
-                        default {error "'$skey' not supported."}  
+                        default {zesty::throwError "'$skey' not supported."}  
                     }
                 }
             }
             -content {
                 if {[llength $value] % 2} {
-                    error "'$key' must be in key-value pairs"
+                    zesty::throwError "'$key' must be in key-value pairs"
                 }
                 foreach {skey svalue} $value {
                     switch -exact -- $skey {
                         text  {dict set options content $skey $svalue}
                         align {
                             if {$svalue ni {"left" "right" "center"}} {
-                                error "align must be one of: left, right, center"
+                                zesty::throwError "align must be one of: left, right, center"
                             }
                             dict set options content $skey $svalue
                         }
                         style {
                             if {[llength $svalue] % 2} {
-                                error "'$skey' must be in key-value pairs"
+                                zesty::throwError "'$skey' must be in key-value pairs"
                             }
                             dict set options content $skey $svalue
                         }
                         table {
                             if {[llength $svalue] % 2} {
-                                error "'$skey' must be in key-value pairs"
+                                zesty::throwError "'$skey' must be in key-value pairs"
                             }
                             foreach {tkey tvalue} $svalue {
                                 switch -exact -- $tkey {
                                     enabled {
                                         if {![string is boolean -strict $tvalue]} {
-                                            error "'enabled' must be a boolean value"
+                                            zesty::throwError "'enabled' must be a boolean value"
                                         }
                                         dict set options content table $tkey $tvalue
                                     }
                                     columns {
                                         foreach width $tvalue {
                                             if {![string is integer -strict $width] || ($width == 0)} {
-                                                error "Column widths must be integers or\
+                                                zesty::throwError "Column widths must be integers or\
                                                        width equal to -1 for column width auto"
                                             }
                                         }
@@ -162,7 +162,7 @@ proc zesty::box {args} {
                                     alignments {
                                         foreach align $tvalue {
                                             if {$align ni {"left" "right" "center"}} {
-                                                error "align column table must be one of\
+                                                zesty::throwError "align column table must be one of\
                                                        : left, right, center"
                                             }
                                         }
@@ -174,17 +174,17 @@ proc zesty::box {args} {
                                     styles {
                                         dict set options content table $tkey $tvalue
                                     }
-                                    default {error "'$tkey' not supported in table."}
+                                    default {zesty::throwError "'$tkey' not supported in table."}
                                 }
                             }
                         }
-                        default {error "'$skey' not supported."}  
+                        default {zesty::throwError "'$skey' not supported."}  
                     }
                 }                
             }
             -box {
                 if {[llength $value] % 2} {
-                    error "'$key' must be in key-value pairs"
+                    zesty::throwError "'$key' must be in key-value pairs"
                 }
                 foreach {skey svalue} $value {
                     switch -exact -- $skey {
@@ -194,46 +194,46 @@ proc zesty::box {args} {
                                 set keyType [format {%s or %s.} \
                                     [join [lrange $keys 0 end-1] ", "] [lindex $keys end] \
                                 ]
-                                error "'$svalue' must be one of: $keyType"
+                                zesty::throwError "'$svalue' must be one of: $keyType"
                             }
                             dict set options box $skey $svalue
                         }
                         style {
                             if {[llength $svalue] % 2} {
-                                error "'$skey' must be in key-value pairs"
+                                zesty::throwError "'$skey' must be in key-value pairs"
                             }
                             dict set options box $skey $svalue
                         }
                         size {
                             if {[llength $svalue] != 2} {
-                                error "'$skey' must be a list of two integers {width height}"
+                                zesty::throwError "'$skey' must be a list of two integers {width height}"
                             }
                             lassign $svalue width height
                             if {
                                 ![string is integer -strict $width] ||
                                 ![string is integer -strict $height]
                             } {
-                                error "'$skey' must contain positive integers"
+                                zesty::throwError "'$skey' must contain positive integers"
                             }
                             dict set options box size $svalue
                         }
                         fullScreen {
                             if {![string is boolean -strict $svalue]} {
-                                error "'$skey' must be a boolean value"
+                                zesty::throwError "'$skey' must be a boolean value"
                             }
                             dict set options box fullScreen $svalue
                         }
-                        default {error "'$skey' not supported."}  
+                        default {zesty::throwError "'$skey' not supported."}  
                     }
                 }
             }
             -formatCmdBoxMsgtruncated {
                 if {[info commands $value] eq ""} {
-                    error "A command must be associated with '$key'"
+                    zesty::throwError "A command must be associated with '$key'"
                 }
                 dict set options formatCmdBoxMsgtruncated $value
             }
-            default {error "'$key' not supported."}  
+            default {zesty::throwError "'$key' not supported."}  
         }
     }
 
@@ -1047,17 +1047,17 @@ proc zesty::validateTableData {data columns} {
     # Returns nothing, throws error if validation fails.
 
     if {[llength $data] == 0} {
-        error "Table data is empty"
+        zesty::throwError "Table data is empty"
     }
     
     set expected_cols [llength $columns]
     if {$expected_cols == 0} {
-        error "Table columns are empty"
+        zesty::throwError "Table columns are empty"
     }
     
     foreach row $data {
         if {[llength $row] != $expected_cols} {
-            error "Inconsistent number of columns in table data"
+            zesty::throwError "Inconsistent number of columns in table data"
         }
     }
 }

@@ -102,26 +102,26 @@ oo::class create zesty::Bar {
    
         # Process constructor arguments with validation
         if {[llength $args] % 2} {
-            error "Arguments must be in key-value pairs"
+            zesty::throwError "Arguments must be in key-value pairs"
         }
         
         foreach {key value} $args {
             switch -exact -- $key {
                 -minColumnWidth    {
                     if {![string is integer -strict $value] || $value < 1} {
-                        error "'$key' must be a positive integer"
+                        zesty::throwError "'$key' must be a positive integer"
                     }
                     dict set _options minColumnWidth $value
                 }
                 -minBarWidth {
                     if {![string is integer -strict $value] || $value < 5} {
-                        error "'$key' must be >= 5"
+                        zesty::throwError "'$key' must be >= 5"
                     }
                     dict set _options minBarWidth $value
                 }
                 -ellipsisThreshold {
                     if {![string is integer -strict $value] || $value < 0} {
-                        error "'$key' must be >= 0"
+                        zesty::throwError "'$key' must be >= 0"
                     }
                     dict set _options ellipsisThreshold $value
                 }
@@ -131,19 +131,19 @@ oo::class create zesty::Bar {
                 -rightBarDelimiter  {dict set _options rightBarDelimiter $value}
                 -indeterminateSpeed {
                     if {$value == 0} {
-                        error "'$key' should not be equal to '0'"
+                        zesty::throwError "'$key' should not be equal to '0'"
                     }
                     dict set _options indeterminateSpeed $value
                 }
                 -indeterminateBarStyle {
                     if {$value ni {"bounce" "pulse" "wave"}} {
-                        error "'$key' must be one of: bounce, pulse or wave."
+                        zesty::throwError "'$key' must be one of: bounce, pulse or wave."
                     }
                     dict set _options indeterminateBarStyle $value
                 }
                 -spinnerFrequency {
                     if {![string is integer -strict $value] || $value < 1} {
-                        error "'$key' must be a positive integer"
+                        zesty::throwError "'$key' must be a positive integer"
                     }
                     dict set _options spinnerFrequency $value
                 }
@@ -152,42 +152,42 @@ oo::class create zesty::Bar {
                 -setColumns         {dict set _options setColumns $value}
                 -lineHSeparator     {
                     if {[llength $value] % 2} {
-                        error "'$key' must be in key-value pairs"
+                        zesty::throwError "'$key' must be in key-value pairs"
                     }
                     foreach {skey svalue} $value {
                         switch -exact -- $skey {
                             show  {dict set _options lineHSeparator $skey $svalue}
                             char  {
                                 if {[string length $svalue] != 1} {
-                                    error "This 'key' must have a length equal to 1."
+                                    zesty::throwError "This 'key' must have a length equal to 1."
                                 }
                                 dict set _options lineHSeparator $skey $svalue
                             }
                             style {
                                 if {[llength $svalue] % 2} {
-                                    error "'$skey' must be in key-value pairs"
+                                    zesty::throwError "'$skey' must be in key-value pairs"
                                 }
                                 
                                 dict set _options lineHSeparator $skey $svalue
                             }
-                            default {error "'$skey' not supported."}  
+                            default {zesty::throwError "'$skey' not supported."}  
                         }
                     }
                 }
                 -headers {
                     if {[llength $value] % 2} {
-                        error "'$key' must be in key-value pairs"
+                        zesty::throwError "'$key' must be in key-value pairs"
                     }
                     
                     foreach {skey svalue} $value {
                         switch -exact -- $skey {
                             show {dict set _options headers $skey $svalue}
                             set  {dict set _options headers $skey $svalue}
-                            default {error "'$skey' not supported."}  
+                            default {zesty::throwError "'$skey' not supported."}  
                         }
                     }
                 }
-                default {error "'$key' not supported"}  
+                default {zesty::throwError "'$key' not supported"}  
             }
         }
 
@@ -265,7 +265,7 @@ oo::class create zesty::Bar {
         #
         # Returns: nothing.
         if {![dict exists $_column_configs $column_num]} {
-            return -code error "Column $column_num does not exist"
+            zesty::throwError "Column $column_num does not exist"
         }
         dict set _header_configs $column_num $data
         
@@ -280,16 +280,16 @@ oo::class create zesty::Bar {
         #
         # Returns: nothing.
         if {[llength $config] % 2} {
-            error "Arguments must be in key-value pairs"
+            zesty::throwError "Arguments must be in key-value pairs"
         }
 
         if {![dict get $_options headers show]} {
-            error "Headers are not enabled"
+            zesty::throwError "Headers are not enabled"
         }
 
         foreach {key value} $config {
             if {[llength $value] % 2} {
-                error "Arguments must be in key-value pairs"
+                zesty::throwError "Arguments must be in key-value pairs"
             }
             my ConfigureHeader $key $value
         }
@@ -342,11 +342,11 @@ oo::class create zesty::Bar {
                 set data  [my GetHeaderText $key]
 
                 if {[llength $data] % 2} {
-                    error "Arguments must be in key-value pairs"
+                    zesty::throwError "Arguments must be in key-value pairs"
                 }
                 
                 if {![dict exists $data name]} {
-                    error "Error: header configuration must contain 'name' key"
+                    zesty::throwError "Error: header configuration must contain 'name' key"
                 }
 
                 set header_text [dict get $data name]
@@ -358,7 +358,7 @@ oo::class create zesty::Bar {
                 }
 
                 if {$align ni {left center right}} {
-                    error "Align value should be 'left', 'center' or 'right'"
+                    zesty::throwError "Align value should be 'left', 'center' or 'right'"
                 }
                 
                 # Special case for progress bar
@@ -499,7 +499,7 @@ oo::class create zesty::Bar {
                     dict set _column_configs $index align left
                 } else {
                     # Unknown type
-                    return -code error "A command must be associated\
+                    zesty::throwError "A command must be associated\
                                         with '$type' column type."
                 }
             }
@@ -531,7 +531,7 @@ method RenderSpinner {task_id width} {
     set pos [dict get $_tasks $task_id anim_spin]
     
     if {![dict exists $_spinnerStyle $spinnerStyle]} {
-        error "'$spinnerStyle' not supported."
+        zesty::throwError "'$spinnerStyle' not supported."
     }
     
     set spinner_chars [dict get $_spinnerStyle $spinnerStyle]
@@ -596,7 +596,7 @@ method RenderSpinner {task_id width} {
                 set first_elem [lindex $column 0]
                 
                 if {$first_elem ne "zSeparator"} {
-                    error "Column '$num_col' should be a type 'zSeparator'"
+                    zesty::throwError "Column '$num_col' should be a type 'zSeparator'"
                 }
                 # Format {zSeparator |} - separator with specified character
                 set separator_char [lindex $column 1]
@@ -678,11 +678,11 @@ method RenderSpinner {task_id width} {
         }
 
         if {![dict exists $_column_configs $num]} {
-            return -code error "Column '$num' does not exist"
+            zesty::throwError "Column '$num' does not exist"
         }
         
         if {[llength $args] % 2} {
-            error "Arguments must be in key-value pairs"
+            zesty::throwError "Arguments must be in key-value pairs"
         }
         
         foreach {key value} $args {
@@ -690,7 +690,7 @@ method RenderSpinner {task_id width} {
                 -visible {dict set _column_configs $num visible $value}
                 -width   {
                     if {![string is integer -strict $value] || ($value < 1)} {
-                        error "width must be a positive integer"
+                        zesty::throwError "width must be a positive integer"
                     }
                     dict set _column_configs $num width $value
                 }
@@ -698,25 +698,25 @@ method RenderSpinner {task_id width} {
                 -format {dict set _column_configs $num format $value}
                 -align  {
                     if {$value ni {"left" "right" "center"}} {
-                        error "align must be one of: left, right, center"
+                        zesty::throwError "align must be one of: left, right, center"
                     }
                     dict set _column_configs $num align $value
                 } 
                 -spinnerStyle {
                     if {![dict exists $_spinnerStyle $value]} {
-                        error "spinnerStyle must be one of:\
+                        zesty::throwError "spinnerStyle must be one of:\
                         [join [dict keys $_spinnerStyle] ","]"
                     }
                     dict set _column_configs $num spinnerStyle $value
                 }
                 -style {
                     if {[llength $value] % 2} {
-                        error "Arguments must be in key-value pairs"
+                        zesty::throwError "Arguments must be in key-value pairs"
                     }
 
                     dict set _column_configs $num style $value
                 }
-                default  {error "Option '$key' not supported"}
+                default  {zesty::throwError "Option '$key' not supported"}
             }
         }
 
@@ -737,11 +737,11 @@ method RenderSpinner {task_id width} {
         # Returns nothing.
  
         if {[dict exists $_column_configs $num]} {
-            return -code error "Column $num already exists"
+            zesty::throwError "Column $num already exists"
         }
         
         if {[llength $args] % 2} {
-            error "Arguments must be in key-value pairs"
+            zesty::throwError "Arguments must be in key-value pairs"
         }
 
         dict set _column_configs $num visible 1
@@ -753,7 +753,7 @@ method RenderSpinner {task_id width} {
                 -visible {dict set _column_configs $num visible $value}
                 -width {
                     if {![string is integer -strict $value] || ($value < 1)} {
-                        error "width must be a positive integer"
+                        zesty::throwError "width must be a positive integer"
                     }
                     dict set _column_configs $num width $value
                 }
@@ -761,30 +761,30 @@ method RenderSpinner {task_id width} {
                 -format {dict set _column_configs $num format $value}
                 -align  {
                     if {$value ni {"left" "right" "center"}} {
-                        error "align must be one of: left, right, center"
+                        zesty::throwError "align must be one of: left, right, center"
                     }
                     dict set _column_configs $num align $value
                 }
                 -spinnerStyle {
                     if {![dict exists $_spinnerStyle $value]} {
-                        error "spinnerStyle must be one of:\
+                        zesty::throwError "spinnerStyle must be one of:\
                               [join [dict keys $_spinnerStyle] ","]"
                     }
                     dict set _column_configs $num spinnerStyle $value
                 }
                 -style {
                     if {[llength $value] % 2} {
-                        error "Arguments must be in key-value pairs"
+                        zesty::throwError "Arguments must be in key-value pairs"
                     }
 
                     dict set _column_configs $num style $value
                 }
-                default  {error "Option '$key' not supported"}
+                default  {zesty::throwError "Option '$key' not supported"}
             }
         }
         
         if {![dict exists $_column_configs $num type]} {
-            return -code error "Column type must be specified with -type option"
+            zesty::throwError "Column type must be specified with -type option"
         }
 
         set _has_spinner_column [my HasSpinnerColumn]
@@ -832,29 +832,29 @@ method RenderSpinner {task_id width} {
                 -name  {dict set _tasks $task_id description $value}
                 -total {
                     if {![string is integer -strict $value] || $value < 0} {
-                        error "total must be a non-negative integer"
+                        zesty::throwError "total must be a non-negative integer"
                     }
                     dict set _tasks $task_id total $value
                 }
                 -completed {
                     if {![string is integer -strict $value] || $value < 0} {
-                        error "completed must be a non-negative integer"
+                        zesty::throwError "completed must be a non-negative integer"
                     }
                     dict set _tasks $task_id completed $value
                 }
                 -mode  {
                     if {$value ni {"determinate" "indeterminate"}} {
-                        error "mode must be 'determinate' or 'indeterminate'"
+                        zesty::throwError "mode must be 'determinate' or 'indeterminate'"
                     }
                     dict set _tasks $task_id mode $value
                 }
                 -animStyle {
                     if {$value ni {"bounce" "pulse" "wave"}} {
-                        error "'$key' must be one of: bounce, pulse or wave."
+                        zesty::throwError "'$key' must be one of: bounce, pulse or wave."
                     }
                     dict set _tasks $task_id animStyle $value
                 }
-                default {error "Option '$key' not supported"}
+                default {zesty::throwError "Option '$key' not supported"}
             }
         }
         
@@ -883,7 +883,7 @@ method RenderSpinner {task_id width} {
         # Returns nothing.
 
         if {![dict exists $_tasks $task_id]} {
-            return -code error "Task ID $task_id does not exist"
+            zesty::throwError "Task ID $task_id does not exist"
         }
 
         # Save old state to detect if task just completed
@@ -895,20 +895,20 @@ method RenderSpinner {task_id width} {
             switch -- $key {
                 -total {
                     if {![string is integer -strict $value] || $value < 0} {
-                        error "total must be a non-negative integer"
+                        zesty::throwError "total must be a non-negative integer"
                     }
                     dict set _tasks $task_id total $value
                 }
                 -completed {
                     if {![string is integer -strict $value] || $value < 0} {
-                        error "completed must be a non-negative integer"
+                        zesty::throwError "completed must be a non-negative integer"
                     }
                     dict set _tasks $task_id completed $value
                     dict set _tasks $task_id mode "determinate"
                 }
                 -advance {
                     if {![string is integer -strict $value]} {
-                        error "advance must be an integer"
+                        zesty::throwError "advance must be an integer"
                     }
                     dict set _tasks $task_id completed [expr {
                         [dict get $_tasks $task_id completed] + $value
@@ -916,7 +916,7 @@ method RenderSpinner {task_id width} {
                 }
                 -mode  {
                     if {$value ni {"determinate" "indeterminate"}} {
-                        error "mode must be 'determinate' or 'indeterminate'"
+                        zesty::throwError "mode must be 'determinate' or 'indeterminate'"
                     }
                     dict set _tasks $task_id mode $value
                 }
@@ -924,7 +924,7 @@ method RenderSpinner {task_id width} {
                     dict set _tasks $task_id description $value
                 }
                 default {
-                    error "Unknown key '$key'"
+                    zesty::throwError "Unknown key '$key'"
                 }
             }
         }
@@ -979,7 +979,7 @@ method RenderSpinner {task_id width} {
         #
         # Returns nothing.
         if {![dict exists $_tasks $task_id]} {
-            error "Task ID $task_id does not exist"
+            zesty::throwError "Task ID $task_id does not exist"
         }
 
         my update $task_id -advance $steps
@@ -1114,7 +1114,7 @@ method RenderSpinner {task_id width} {
                     return [my RenderWaveAnimation $task_id $width $pos $bg_color $fg_color $speed]
                 }
                 default {
-                    error "Unknown animation style: $anim_style"
+                    zesty::throwError "Unknown animation style: $anim_style"
                 }
             }
         }
@@ -1462,7 +1462,7 @@ method RenderSpinner {task_id width} {
             }
             default {
                 if {[info commands $key] eq ""} {
-                    error "A command must be associated with '$key'"
+                    zesty::throwError "A command must be associated with '$key'"
                 }
                 
                 set result [uplevel #0 [list \
@@ -1630,7 +1630,7 @@ method RenderSpinner {task_id width} {
         }
         
         if {[llength $visible_columns] == 0} {
-            error "No visible columns"
+            zesty::throwError "No visible columns"
         }
 
         # Check if everything fits with configured widths (REALLY OPTIMAL)
@@ -1802,7 +1802,7 @@ method RenderSpinner {task_id width} {
 
         # Check if task exists
         if {![dict exists $_tasks $task_id]} {
-            return -code error "Task ID $task_id does not exist"
+            zesty::throwError "Task ID $task_id does not exist"
         }
         
         # Check if column exists and is visible
@@ -1810,7 +1810,7 @@ method RenderSpinner {task_id width} {
             ![dict exists $_column_configs $column_num] || 
             ![dict get $_column_configs $column_num visible]
         } {
-            return -code error "Column $column_num does not exist or is not visible"
+            zesty::throwError "Column $column_num does not exist or is not visible"
         }
 
         # Calculate column widths
@@ -2333,7 +2333,7 @@ method RenderSpinner {task_id width} {
         # Check if display exceeds available space
         if {$isAvailable} {
             if {$ALLTASKS > $_term_height} {
-                error "Not supported ALLTASKS > Terminal height"
+                zesty::throwError "Not supported ALLTASKS > Terminal height"
             }
 
             # Add empty lines to scroll

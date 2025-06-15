@@ -16,7 +16,7 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
     set result $text
 
     if {([llength $filters] > 0) && ($command ne "")} {
-        error "'Filters' and 'command' cannot be used together."
+        zesty::throwError "'Filters' and 'command' cannot be used together."
     }
 
     # Apply type filters first if present
@@ -24,7 +24,7 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
         set result [zesty::parseTypeFilters $result $filters]
     } elseif {$command ne ""} {
         if {[info commands $command] eq ""} {
-            error "'$command' is not a valid command."
+            zesty::throwError "'$command' is not a valid command."
         }
         set result [uplevel #0 [list {*}$command $text]]
     }
@@ -66,7 +66,7 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
             set local_ansi [zesty::parseEqualFormat $attributes]
         } else {
             # Unsupported format - ignore
-            error "Error: unsupported style format: $attributes"
+            zesty::throwError "Error: unsupported style format: $attributes"
         }
         
         # Apply local style, then content, then return to base style
@@ -107,14 +107,14 @@ proc zesty::parseTypeFilters {text filters} {
     set result $text
 
     if {[llength $filters] % 2} {
-        error "Arguments must be in key-value pairs"
+        zesty::throwError "Arguments must be in key-value pairs"
     }
     
     # Process each filter
     foreach {key style} $filters {
 
         if {[llength $style] % 2} {
-             error "'style' must be in key-value pairs"
+             zesty::throwError "'style' must be in key-value pairs"
         }
 
         set pattern {}
@@ -135,7 +135,7 @@ proc zesty::parseTypeFilters {text filters} {
                 set pattern {(https?://[^\s]+)}
             }
             default {
-                error "Unknown type: $key"
+                zesty::throwError "Unknown type: $key"
             }
         }
 
@@ -228,7 +228,7 @@ proc zesty::parseStyleDictToXML {text style_dict} {
 
     # Process constructor arguments with validation
     if {[llength $style_dict] % 2} {
-        error "Arguments must be in key-value pairs"
+        zesty::throwError "Arguments must be in key-value pairs"
     }
     
     # Build general style attributes

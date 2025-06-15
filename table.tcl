@@ -123,20 +123,20 @@ oo::class create zesty::Table {
                 -autoScroll {dict set _options [string trimleft $key "-"] $value}
                 -padding    {
                     if {![string is integer -strict $value] || $value < 0} {
-                        error "'$key' must be a non-negative integer"
+                        zesty::throwError "'$key' must be a non-negative integer"
                     }
                     dict set _options padding $value
                 }
                 -maxVisibleLines    {
                     if {![string is integer -strict $value] || $value < 0} {
-                        error "'$key' must be a non-negative integer"
+                        zesty::throwError "'$key' must be a non-negative integer"
                     }
                     dict set _options maxVisibleLines $value
                 }
                 -title  - 
                 -caption {
                     if {[llength $value] % 2} {
-                        error "'$key' must be in key-value pairs"
+                        zesty::throwError "'$key' must be in key-value pairs"
                     }
                     set key [string trimleft $key "-"]
 
@@ -145,7 +145,7 @@ oo::class create zesty::Table {
                             name     {dict set _options $key $skey $svalue}
                             style    {
                                 if {[llength $svalue] % 2} {
-                                    error "'$skey' must be in key-value pairs"
+                                    zesty::throwError "'$skey' must be in key-value pairs"
                                 }
                                 dict set _options $key $skey $svalue
                             }
@@ -156,17 +156,17 @@ oo::class create zesty::Table {
                                         [join [lrange $titleJustify 0 end-1] ", "] \
                                         [lindex $titleJustify end] \
                                     ]
-                                    error "'$svalue' must be one of: $keyType"
+                                    zesty::throwError "'$svalue' must be one of: $keyType"
                                 }
                                 dict set _options $key $skey $svalue
                             }
-                            default {error "'$skey' not supported."}  
+                            default {zesty::throwError "'$skey' not supported."}  
                         }
                     }
                 }
                 -box {
                     if {[llength $value] % 2} {
-                        error "'$key' must be in key-value pairs"
+                        zesty::throwError "'$key' must be in key-value pairs"
                     }
                     foreach {skey svalue} $value {
                         switch -exact -- $skey {
@@ -176,17 +176,17 @@ oo::class create zesty::Table {
                                     set keyType [format {%s or %s.} \
                                         [join [lrange $keys 0 end-1] ", "] [lindex $keys end] \
                                     ]
-                                    error "'$svalue' must be one of: $keyType"
+                                    zesty::throwError "'$svalue' must be one of: $keyType"
                                 }
                                 dict set _options box $skey $svalue
                             }
                             style {
                                 if {[llength $svalue] % 2} {
-                                    error "'$skey' must be in key-value pairs"
+                                    zesty::throwError "'$skey' must be in key-value pairs"
                                 }
                                 dict set _options box $skey $svalue
                             }
-                            default {error "'$skey' not supported."}  
+                            default {zesty::throwError "'$skey' not supported."}  
                         }
                     }
                 }
@@ -194,7 +194,7 @@ oo::class create zesty::Table {
                 -header -
                 -footer {
                     if {[llength $value] % 2} {
-                        error "'$key' must be in key-value pairs"
+                        zesty::throwError "'$key' must be in key-value pairs"
                     }
                     set key [string trimleft $key "-"]
 
@@ -203,15 +203,15 @@ oo::class create zesty::Table {
                             show  {dict set _options $key $skey $svalue}
                             style {
                                 if {[llength $svalue] % 2} {
-                                    error "'$skey' must be in key-value pairs"
+                                    zesty::throwError "'$skey' must be in key-value pairs"
                                 }
                                 dict set _options $key $skey $svalue
                             }
-                            default {error "'$skey' not supported."}  
+                            default {zesty::throwError "'$skey' not supported."}  
                         }
                     }
                 }
-                default {error "'$key' not supported."}  
+                default {zesty::throwError "'$key' not supported."}  
             }
         }
         return {}
@@ -457,7 +457,7 @@ oo::class create zesty::Table {
             if {[dict exists $_column_configs $key]} {
                 dict set colopts $key $value
             } else {
-                error "Unknown column option: '$key'."
+                zesty::throwError "Unknown column option: '$key'."
             }
         }
 
@@ -635,7 +635,7 @@ oo::class create zesty::Table {
         
         # Ensure we have sufficient arguments
         if {$numArgs > $numCols} {
-            error "Too many arguments provided: $numArgs for $numCols columns"
+            zesty::throwError "Too many arguments provided: $numArgs for $numCols columns"
         }
         
         # Padding with empty strings for missing columns
@@ -934,7 +934,7 @@ oo::class create zesty::Table {
         set boxtype [dict get $_options box type]
 
         if {![dict exists $_tablestyles $boxtype]} {
-            error "$boxtype is not a valid box type"
+            zesty::throwError "$boxtype is not a valid box type"
         }
 
         set boxchars [dict get $_tablestyles $boxtype]

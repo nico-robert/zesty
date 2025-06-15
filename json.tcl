@@ -36,7 +36,7 @@ proc zesty::jsonDecode {args} {
 
     # Process constructor arguments with validation
     if {[llength $args] % 2} {
-        error "Arguments must be in key-value pairs"
+        zesty::throwError "Arguments must be in key-value pairs"
     }
 
     foreach {key value} $args {
@@ -44,25 +44,25 @@ proc zesty::jsonDecode {args} {
             -json            {dict set options json $value}
             -dumpJSONOptions {
                 if {[llength $value] % 2} {
-                    error "'$key' must be in key-value pairs"
+                    zesty::throwError "'$key' must be in key-value pairs"
                 }
                 foreach {dumpkey dumpvalue} $value {
                     switch -exact -- $dumpkey {
                         offset  -
                         newline -
                         begin   {dict set options dumpJSONOptions $dumpkey $dumpvalue}
-                        default {error "'$dumpkey' not supported."}  
+                        default {zesty::throwError "'$dumpkey' not supported."}  
                     }
                 }
             }
             -style {
                 if {[llength $value] % 2} {
-                    error "'$key' must be in key-value pairs"
+                    zesty::throwError "'$key' must be in key-value pairs"
                 }
                 foreach {skey svalue} $value {
 
                     if {[llength $svalue] % 2} {
-                        error "'$skey' must be in key-value pairs"
+                        zesty::throwError "'$skey' must be in key-value pairs"
                     }
                     switch -exact -- $skey {
                         key     -
@@ -70,17 +70,17 @@ proc zesty::jsonDecode {args} {
                         num     -
                         null    -
                         boolean {dict set options style $skey $svalue}
-                        default {error "'$skey' not supported."}  
+                        default {zesty::throwError "'$skey' not supported."}  
                     }
                 }
             }
             -showLinesNumber {dict set options showLinesNumber $value}
-            default {error "'$key' not supported."}  
+            default {zesty::throwError "'$key' not supported."}  
         }
     }
 
     if {[dict get $options json] eq ""} {
-        error "No json provided"
+        zesty::throwError "No json provided"
     }
 
     set json [dict get $options json]
@@ -195,7 +195,7 @@ proc zesty::jsondump {huddle_object style {offset "  "} {newline "\n"} {begin ""
             return "\{$nlof[join $inner ,$nlof]$newline$begin\}"
         }
         default {
-            error "Callback not supported with zesty::jsondump: '$type'"
+            zesty::throwError "Callback not supported with zesty::jsondump: '$type'"
         }
     }
 }

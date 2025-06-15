@@ -27,7 +27,7 @@ proc zesty::initStyles {} {
 
     # Check if zesty::tcolor exists
     if {![info exists tcolor]} {
-        error "Warning: zesty::tcolor not found."
+        zesty::throwError "zesty::tcolor not found."
     }
 
     set termstyles {
@@ -56,8 +56,9 @@ proc zesty::initStyles {} {
         set search_key [string tolower [string map $map $color_name]]
 
         if {[dict exists colors_dict $search_key]} {
-            error "Error: Color '$color_name' ($code) is duplicate\
-                  of '[dict get $color_names_dict $search_key]' ([dict get $colors_dict $search_key])"
+            zesty::throwError "Color '$color_name' ($code) is duplicate\
+                               of '[dict get $color_names_dict $search_key]'\
+                               ([dict get $colors_dict $search_key])"
         }
         
         # Store code with search key
@@ -259,7 +260,7 @@ proc zesty::echo {args} {
     # Mode with base style + inline tags
     if {[llength $styleList] > 0} {
         if {[llength $styleList] % 2} {
-            error "Arguments must be in key-value pairs"
+            zesty::throwError "Arguments must be in key-value pairs"
         }
     }
 
