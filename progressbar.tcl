@@ -515,6 +515,7 @@ method RenderSpinner {task_id width} {
     # width   - column width for spinner display
     #
     # Returns formatted spinner text centered in column width.
+
     set spinnerStyle "dots"
     # Check if specific style is defined for this column
     foreach num [dict keys $_column_configs] {
@@ -663,6 +664,7 @@ method RenderSpinner {task_id width} {
         #  -style        - text styling options
         #
         # Returns nothing.
+
         set num "-"
         if {[string is integer -strict $numOrType]} {
             set num $numOrType
@@ -889,7 +891,6 @@ method RenderSpinner {task_id width} {
             [dict get $_tasks $task_id completed] >= [dict get $_tasks $task_id total]
         }]
 
-        # Process arguments
         foreach {key value} $args {
             switch -- $key {
                 -total {
@@ -1133,7 +1134,7 @@ method RenderSpinner {task_id width} {
 
         set block_size [expr {max(int($width / 4), 3)}]
 
-        # MODIFICATION: Slow down animation by dividing position
+        # Slow down animation by dividing position
         if {$speed < 0} {
             set slow_pos [expr {$pos / abs($speed)}]
         } else {
@@ -1154,8 +1155,7 @@ method RenderSpinner {task_id width} {
         
         set ld [dict get $_options leftBarDelimiter]
         set rd [dict get $_options rightBarDelimiter]
-        
-        # OPTIMIZED APPROACH: Build by segments
+
         set result ""
         
         # Segment before animation
@@ -1194,7 +1194,6 @@ method RenderSpinner {task_id width} {
         set max_size [expr {int($width * 0.8)}]
         set min_size [expr {int($width * 0.2)}]
 
-        # MODIFICATION: Slow down animation by dividing position
         if {$speed < 0} {
             set slow_pos [expr {$pos / abs($speed)}]
         } else {
@@ -1221,8 +1220,7 @@ method RenderSpinner {task_id width} {
         
         set ld [dict get $_options leftBarDelimiter]
         set rd [dict get $_options rightBarDelimiter]
-        
-        # OPTIMIZED APPROACH: Build by segments
+
         set result ""
         
         # Segment before animation (left)
@@ -1265,15 +1263,13 @@ method RenderSpinner {task_id width} {
         
         set total_pattern_size [expr {$pattern_size * 2}]
         
-        # MODIFICATION: Slow down animation by dividing position
         if {$speed < 0} {
             set slow_pos [expr {$pos / abs($speed)}]
         } else {
             set slow_pos [expr {$pos * $speed}]
         }
         
-        # MODIFICATION 2: Reverse direction (left to right)
-        # Instead of adding offset, subtract it to reverse direction
+        # Reverse direction (left to right)
         set offset [expr {(-$slow_pos) % $total_pattern_size}]
         if {$offset < 0} {
             set offset [expr {$offset + $total_pattern_size}]
@@ -1637,7 +1633,7 @@ method RenderSpinner {task_id width} {
             error "No visible columns"
         }
 
-        # CASE 1: Check if everything fits with configured widths (REALLY OPTIMAL)
+        # Check if everything fits with configured widths (REALLY OPTIMAL)
         set total_requested_width 0
         set spaces_between_columns [expr {[llength $visible_columns] - 1}]
         
@@ -1656,7 +1652,7 @@ method RenderSpinner {task_id width} {
         incr total_requested_width $spaces_between_columns
         
         if {$total_requested_width <= $available_width} {
-            # OPTIMAL CASE: Everything fits perfectly, use configured widths
+            # Everything fits perfectly, use configured widths
             set colwidths {}
             foreach col $visible_columns {
                 set width [dict get $_column_configs $col width]
@@ -1752,8 +1748,7 @@ method RenderSpinner {task_id width} {
                 }
             }
         }
-        
-        # Cache and return
+
         set _column_widths_cache $colwidths
         set _cache_valid 1
         return $colwidths
@@ -1885,15 +1880,16 @@ method RenderSpinner {task_id width} {
 
     method StartSpinnerTimer {} {
         # Starts separate update timer for spinner columns.
-        #
         # Cancels existing spinner timer and starts new one with
-        # configured frequency. Used for smooth spinner animations.
-        # Stop old timer if it exists
+        # configured frequency.
+        #
+        # Returns nothing.
+
         if {$_spinner_timer_id ne ""} {
             after cancel $_spinner_timer_id
         }
         
-        # Start new timer for spinners (faster)
+        # Start new timer for spinners
         my updateSpinners
         
         return {}
@@ -1943,11 +1939,12 @@ method RenderSpinner {task_id width} {
         # Starts separate update timer for time columns.
         #
         # Returns nothing.
+
         if {$_time_timer_id ne ""} {
             after cancel $_time_timer_id
         }
         
-        # Start new timer for time columns (slower)
+        # Start new timer for time columns
         my updateTimeColumns
         
         return {}
@@ -2036,6 +2033,7 @@ method RenderSpinner {task_id width} {
         # Starts separate timer for indeterminate progress bars.
         #
         # Returns nothing.
+
         if {$_indeterminate_timer_id ne ""} {
             after cancel $_indeterminate_timer_id
             set _indeterminate_timer_id ""
@@ -2087,6 +2085,7 @@ method RenderSpinner {task_id width} {
         # Starts separate timer for custom column procedures.
         #
         # Returns nothing.
+
         if {$_custom_timer_id ne ""} {
             after cancel $_custom_timer_id
             set _custom_timer_id ""

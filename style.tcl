@@ -102,8 +102,7 @@ proc zesty::getColorName {color} {
         }
         return $color
     }
-    
-    # Normalize for search
+
     set map {" " "" "_" "" "-" ""}
     set search_key [string tolower [string map $map $color]]
     
@@ -123,7 +122,6 @@ proc zesty::getColorCode {color {find_closest 1}} {
     #                values (default: 1)
     #
     # Returns: the color code (0-255) if found, empty string otherwise.
-    # For hex values, can optionally find the closest matching color.
     variable colors_dict 
     variable hex_dict
     
@@ -163,8 +161,7 @@ proc zesty::getColorCode {color {find_closest 1}} {
             }
         }
     }
-    
-    # Normalize the searched color name for lookup
+
     set map {" " "" "_" "" "-" ""}
     set search_key [string tolower [string map $map $color]]
     
@@ -181,8 +178,7 @@ proc zesty::styleANSICode {name} {
     # name - style name (reset, bold, dim, italic, underline, blink,
     #        reverse, strikethrough)
     #
-    # Returns: the ANSI escape sequence for the specified style,
-    # or causes error if style name is not found.
+    # Returns: the ANSI escape sequence for the specified style.
     variable termstyles
     
     return "\033\[[dict get $termstyles $name]m"
@@ -195,7 +191,8 @@ proc zesty::colorANSICode {color_code {bg 0}} {
     # bg         - whether to apply as background color (default: 0)
     #
     # Returns: the ANSI escape sequence for the specified color,
-    # empty string if color_code is empty. Uses 256-color palette.
+    # empty string if color_code is empty.
+
     if {$color_code ne ""} {
         if {$bg} {
             return "\033\[48;5;${color_code}m"
@@ -220,15 +217,13 @@ proc zesty::echo {args} {
     #   text...                 - text content to display
     #
     # Returns: nothing, outputs formatted text to stdout.
-    # Supports inline style tags and various color/style options.
     set text ""
     set styleList {}
     set filters {}
     set addNewline 1
     set noReset 0
     set command {}
-    
-    # Parse arguments
+
     for {set i 0} {$i < [llength $args]} {incr i} {
         set arg [lindex $args $i]
         switch -- $arg {

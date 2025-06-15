@@ -8,10 +8,10 @@ proc zesty::jsonDecode {args} {
     # and styling options.
     #
     # args - variable arguments supporting:
-    #  -json {json_string}              - JSON data to decode
-    #  -dumpJSONOptions {key value ...} - formatting huddle options
-    #  -style {key value ...}           - styling specifications
-    #  -showLinesNumber boolean         - whether to show line numbers
+    #  -json            - JSON data to decode
+    #  -dumpJSONOptions - formatting huddle options
+    #  -style           - styling specifications
+    #  -showLinesNumber - whether to show line numbers
     #
     # Returns formatted and styled JSON string with optional line
     # numbers and custom colors for different JSON element types.
@@ -117,7 +117,9 @@ proc zesty::jsonDecode {args} {
 
 proc zesty::jsondump {huddle_object style {offset "  "} {newline "\n"} {begin ""}} {
     # Recursively dumps huddle object to styled JSON format.
-    # Based on 'jsondump' procedures in huddle.tcl file
+    # Based on 'jsondump' procedures in huddle.tcl file (BSD-style license)
+    # Copyright (c) 2008-2011 KATO Kanryu <kanryu6@users.sourceforge.net>
+    # Copyright (c) 2015 Miguel Martínez López <aplicacionamedida@gmail.com>
     # according to my needs for styling extensions.
     #
     # huddle_object - huddle data structure to convert

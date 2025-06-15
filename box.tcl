@@ -490,11 +490,6 @@ proc zesty::box {args} {
     # Get content alignment
     set content_align [dict get $options content align]
     
-    set result ""
-    
-    # Get content alignment
-    set content_align [dict get $options content align]
-    
     # Build box according to title position
     if {$title ne ""} {
         set result [zesty::buildBoxWithTitle \
@@ -557,13 +552,13 @@ proc zesty::buildBoxWithTitle {
     set result ""
     
     # Parse anchor
-    set side [string index $anchor 0]     ;# n, s, e, w
-    set align [string index $anchor 1]    ;# l, c, r
+    set side [string index $anchor 0]  ;# n, s, e, w
+    set align [string index $anchor 1] ;# l, c, r
     
     # Prepare vertical title for w and e sides
     set vertical_title_chars {}
     set title_start_line 0
-    if {$side eq "w" || $side eq "e"} {
+    if {$side in {"w" "e"}} {
         # Calculate available height for vertical title
         set available_height [expr {[llength $processed_lines] + 2 * $paddingY}]
         set vertical_title_chars [zesty::createVerticalTitle $title $available_height]

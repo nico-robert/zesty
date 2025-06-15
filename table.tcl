@@ -19,6 +19,21 @@ oo::class create zesty::Table {
         # capabilities for proper rendering.
         #
         # args - Configuration arguments in key-value pairs
+        # title            - Table title
+        # caption          - Table caption
+        # box              - Table box style
+        # padding          - Table padding
+        # showEdge         - Show table edge
+        # lines            - Show table lines
+        # header           - Show table header
+        # footer           - Show table footer (not implemented yet)
+        # keyPgup          - Key for page up
+        # keyPgdn          - Key for page down
+        # keyQuit          - Key for quit
+        # maxVisibleLines  - Maximum number of visible lines
+        # autoScroll       - Enable auto-scrolling
+        # pageScroll       - Enable page scrolling
+        # continuousScroll - Enable continuous scrolling
         #
         # Returns nothing.
         set _rows {}
@@ -376,7 +391,6 @@ oo::class create zesty::Table {
         if {$maxStartLine < 0} {set maxStartLine 0}
         
         while {1} {
-            # Clear screen
             zesty::resetTerminal
             
             # Display fixed header
@@ -935,8 +949,7 @@ oo::class create zesty::Table {
         set tb  [lindex $boxchars 8]  ;# T-junction bottom
         set tlj [lindex $boxchars 9]  ;# T-junction left
         set trj [lindex $boxchars 10] ;# T-junction right
-        
-        # Calculate column widths
+
         set colWidths [my CalculateTableColumnWidths]
         set numCols   [dict size $_column_options]
         set tableWidth 0
@@ -1075,8 +1088,7 @@ oo::class create zesty::Table {
                     incr remainingExcess -1
                 }
             }
-            
-            # Use adjusted widths
+
             set colWidths $adjustedColWidths
             
             # Recalculate total table width
