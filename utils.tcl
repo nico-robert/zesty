@@ -935,6 +935,22 @@ proc zesty::resetTerminal {} {
     flush stdout
 }
 
+proc zesty::hideCursor {} {
+    # Sends ANSI escape sequences to hide cursor.
+    #
+    # Returns nothing. 
+    puts -nonewline "\033\[?25l"
+    flush stdout
+}
+
+proc zesty::showCursor {} {
+    # Sends ANSI escape sequences to show cursor.
+    #
+    # Returns nothing. 
+    puts -nonewline "\033\[?25h"
+    flush stdout
+}
+
 proc zesty::strLength {text} {
     # Calculate the visual width of a string taking into account wide characters
     # such as emojis and CJK characters that occupy 2 terminal columns instead of 1.
