@@ -105,14 +105,12 @@ zesty::echo text ?options?
 #### Options:
 
 <div align="left">
-
 | args           | Description               
 | ------         | ------                    
 | _-style_       | Style specifications      
 | _-n_           | No newline        
 | _-noreset_     | Don't reset formatting      
 | _-filters_     | Apply style filters (num, email, url)
-
 </div>
 
 #### Style Options:
