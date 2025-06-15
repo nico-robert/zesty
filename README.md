@@ -7,8 +7,7 @@ Create beautiful command-line interfaces with styled text, progress bars, tables
 - 📊 Progress Bars - Multiple tasks, animations, custom columns.  
 - 📋 Tables - Auto-sizing, text wrapping, scrolling, styling.  
 - 📦 Boxes - Multiple border styles, title positioning, padding.  
-- 🔧 JSON Decoder - Pretty-print JSON with syntax highlighting
-- 🎯 Cross-Platform - Windows, Linux, macOS support.  
+- 🔧 JSON Decoder - Pretty-print JSON with syntax highlighting.
 
 ## 🛠️ Requirements :
 - [Tcl](https://www.tcl.tk/) 8.6 or higher
@@ -19,23 +18,25 @@ Create beautiful command-line interfaces with styled text, progress bars, tables
     - Terminal with ANSI escape sequence support
 - huddle::json package from [Tcllib](https://core.tcl-lang.org/tcllib/doc/trunk/embedded/index.md) (optional for JSON formatting)
 
+## 🎯 Cross-Platform :
+- Windows, Linux, macOS support.
 > [!NOTE]  
-> I have mainly tested this package on Windows (new `Terminal` and legacy `cmd.exe`) and macOS, it should work on Linux (I hope so !)
+> Primary testing has been conducted on Windows (both Windows `Terminal.exe` and `cmd.exe`) and macOS. Linux compatibility is expected but may require additional validation.
 ## 🚀 Quick Start :
 
 Echo
 ```tcl
+# Import echo command to avoid namespace qualification:
+namespace import zesty::echo
+
 # Basic styled text
-zesty::echo "Hello World!" -style {fg red bold 1}
+echo "Hello World!" -style {fg red bold 1}
 
 # Inline style tags
-zesty::echo "This is <s fg=red>red color</s> and <s fg=blue bold=1>bold blue</s>"
+echo "This is <s fg=red>red color</s> and <s fg=blue bold=1>bold blue</s>"
 
 # Gradient effect
-zesty::echo [zesty::gradient "Rainbow Text" "red" "yellow"]
-
-# import echo command :
-namespace import zesty::echo
+echo [zesty::gradient "Rainbow Text" "red" "yellow"]
 
 # Apply a filter to the numerical values.
 echo "1. Basic Echo" -filters {num {fg cyan}}
@@ -51,7 +52,6 @@ set task [$bar addTask -name "Downloading..." -total 100]
 zesty::loop -start 0 -end 100 -delay 50 {
     $bar advance $task1 1
 }
-
 ```
 📋 Tables
 ```tcl
@@ -73,7 +73,7 @@ $table display
 Boxes
 ```tcl
 # Simple box with title
-zesty::echo [zesty::box \
+echo [zesty::box \
     -title {name "Info" anchor "nc"} \
     -content {text "Your content here"} \
     -padding 2
@@ -83,10 +83,10 @@ JSON Formatting
 ```tcl
 # Pretty-print JSON with syntax highlighting
 set json {{"name": "John", "age": 30, "active": true}}
-zesty::echo [zesty::jsonDecode -json $json]
+echo [zesty::jsonDecode -json $json]
 
 # Custom styling for JSON elements
-zesty::echo [zesty::jsonDecode -json $json -showLinesNumber 1 -style {
+echo [zesty::jsonDecode -json $json -showLinesNumber 1 -style {
     key {fg cyan}
     str {fg yellow}
     num {fg green}
@@ -103,39 +103,13 @@ The `zesty::echo` command provides styled console output:
 zesty::echo text ?options?
 ````
 #### Options:
-<table>
-  <thead>
-    <tr>
-      <th>args</th>
-      <th>Description</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>-style</td>
-      <td>Style specifications</td>
-    </tr>
-    <tr>
-      <td>-n</td>
-      <td>No newline</td>
-    </tr>
-    <tr>
-      <td>-noreset</td>
-      <td>Don't reset formatting</td>
-    </tr>
-    <tr>
-      <td>-filters</td>
-      <td>Apply style filters (num, email, url)</td>
-    </tr>
-  </tbody>
-</table>
 
-#### Style Options:
-args                                        |Description
-| ------                                    | ------                    
-| _fg,bg_                                   | Foreground/background color (name, number or hexcolor)   
-| _bold, italic, underline, strikethrough_  | Text decorations       
-| _dim, reverse, blink_                     | Additional effects     
+| args           | Description               
+| ------         | ------                    
+| _-style_       | Style specifications      
+| _-n_           | No newline        
+| _-noreset_     | Don't reset formatting      
+| _-filters_     | Apply style filters (num, email, url)
  
 ###  Progress Bars
 > [!IMPORTANT]    
@@ -233,16 +207,15 @@ args                            |Description
 |_-showLinesNumber_             | whether to show line numbers
 
 ### 🎨 Color support :  
-`zesty` supports multiple color formats:
+**zesty** supports multiple color formats:
 ```tcl
-# See colors.tcl (palette (0-255) if supported) file for more details.
-# Named colors
--style {fg "red"}
-# Numbered colors.
--style {fg 196}
-# Hex colors
--style {fg "#FF5733"}
+-style {
+    fg "red"     ; # Named colors
+    fg 196       ; # Numbered colors.
+    fg "#FF5733" ; # Hex colors
+}
 ```
+_Refer to `colors.tcl` file for the complete 256-color palette specification and terminal capability detection._
 ## 👀 Examples :
 See the **[examples](/examples)** folder for all demos.
 
@@ -251,3 +224,7 @@ See the **[examples](/examples)** folder for all demos.
 
 ## 🙏 Acknowledgments :
 Inspired by modern CLI tools and libraries
+
+## 🕙 Release :
+*  **15-Jun-2025** : 0.1
+    - Initial release.
