@@ -544,7 +544,11 @@ proc zesty::gradient {text start_color end_color} {
     set sc [zesty::getColorCode $start_color]
     set ec [zesty::getColorCode $end_color]
 
-    set len [string length $text]
+    # Split text into characters to works with Tcl 8.6
+    # instead to use string index command.
+    set chars [split $text ""]
+
+    set len [llength $chars]
     if {$len <= 1} {
         return [zesty::parseStyleDictToXML $text [list fg $sc]]
     }
@@ -553,7 +557,7 @@ proc zesty::gradient {text start_color end_color} {
     for {set i 0} {$i < $len} {incr i} {
         set ratio [expr {double($i) / ($len - 1)}]
         set current_color [zesty::blendColors $sc $ec $ratio]
-        set char [string index $text $i]
+        set char [lindex $chars $i]
         append result [zesty::parseStyleDictToXML $char [list fg $current_color]]
     }
     return $result
