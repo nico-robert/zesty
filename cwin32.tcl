@@ -257,6 +257,14 @@ proc zesty::isNewTerminal {} {
     #
     # Returns: 1 if running in Windows Terminal, 0 otherwise.
 
+    # Checks if environment variable WT_SESSION or WT_PROFILE_ID is set.
+    if {
+        ([info exists ::env(WT_SESSION)] && ($::env(WT_SESSION) ne "")) ||
+        ([info exists ::env(WT_PROFILE_ID)] && ($::env(WT_PROFILE_ID) ne ""))
+    } {
+        return 1
+    }
+
     set name "null"
     set parentPid [zesty::getInfoProcess [k32::GetCurrentProcessId]]
 
