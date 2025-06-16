@@ -477,7 +477,7 @@ proc interactive_menu {} {
         10 { zesty::resetTerminal ; test_table }
         11 { zesty::resetTerminal ; test_nowrap_truncation }
         12 { zesty::resetTerminal ; test_mixed_nowrap }
-        13 { zesty::resetTerminal ; run_all_demos }
+        13 { zesty::resetTerminal ; run_all_tests }
         0 { zesty::echo "Exiting..."; return }
         default { zesty::echo "Invalid choice. Please try again." }
     }
