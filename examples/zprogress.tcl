@@ -319,17 +319,25 @@ proc test_error_handling {} {
 
 proc run_all_tests {} {
     zesty::echo "Starting zesty::Bar comprehensive tests...\n"
-    
-    test_basic_progress
-    test_multiple_tasks
-    test_custom_columns
-    test_spinner_columns
-    test_indeterminate_modes
-    test_custom_formatting
-    test_styling
-    test_mixed_modes
-    test_custom_command_column
-    
+
+    zesty::hideCursor
+
+    try {
+        test_basic_progress
+        test_multiple_tasks
+        test_custom_columns
+        test_spinner_columns
+        test_indeterminate_modes
+        test_custom_formatting
+        test_styling
+        test_mixed_modes
+        test_custom_command_column
+    } on error {result options} {
+        zesty::throwError [dict get $options -errorinfo]
+    } finally {
+        zesty::showCursor
+    }
+        
     zesty::echo "\n=== All tests completed! ==="
 }
 
