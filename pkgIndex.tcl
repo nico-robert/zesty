@@ -4,7 +4,7 @@
 package ifneeded zesty 0.1 [list apply {dir {
     package require platform
 
-    source [file join $dir zesty.tcl]
+    source -encoding utf-8 [file join $dir zesty.tcl]
     
     if {[platform::generic] eq "win32-x86_64"} {
         package req registry
@@ -17,16 +17,16 @@ package ifneeded zesty 0.1 [list apply {dir {
             error "package 'twapi' or 'cffi >= 2.0'\
             should be present for Windows platform"
         }
-        source [file join $dir $file]
+        source -encoding utf-8 [file join $dir $file]
     }
 
-    source [file join $dir parse.tcl]
-    source [file join $dir colors.tcl]
-    source [file join $dir utils.tcl]
-    source [file join $dir style.tcl]
-    source [file join $dir box.tcl]
-    source [file join $dir json.tcl]
-    source [file join $dir table.tcl]
-    source [file join $dir progressbar.tcl]
+    source -encoding utf-8 [file join $dir parse.tcl]
+    source -encoding utf-8 [file join $dir colors.tcl]
+    source -encoding utf-8 [file join $dir utils.tcl]
+    source -encoding utf-8 [file join $dir style.tcl]
+    source -encoding utf-8 [file join $dir box.tcl]
+    source -encoding utf-8 [file join $dir json.tcl]
+    source -encoding utf-8 [file join $dir table.tcl]
+    source -encoding utf-8 [file join $dir progressbar.tcl]
  
 }} $dir]
