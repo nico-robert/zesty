@@ -488,72 +488,72 @@ oo::class create zesty::Bar {
         return {}
     }
     
-method RenderSpinner {task_id width} {
-    # Renders animated spinner for a task.
-    #
-    # task_id - task identifier
-    # width   - column width for spinner display
-    #
-    # Returns formatted spinner text centered in column width.
+    method RenderSpinner {task_id width} {
+        # Renders animated spinner for a task.
+        #
+        # task_id - task identifier
+        # width   - column width for spinner display
+        #
+        # Returns formatted spinner text centered in column width.
 
-    set spinnerStyle "dots"
-    # Check if specific style is defined for this column
-    foreach num [dict keys $_column_configs] {
-        if {[dict get $_column_configs $num type] eq "zSpinner"} {
-            if {[dict exists $_column_configs $num spinnerStyle]} {
-                set spinnerStyle [dict get $_column_configs $num spinnerStyle]
+        set spinnerStyle "dots"
+        # Check if specific style is defined for this column
+        foreach num [dict keys $_column_configs] {
+            if {[dict get $_column_configs $num type] eq "zSpinner"} {
+                if {[dict exists $_column_configs $num spinnerStyle]} {
+                    set spinnerStyle [dict get $_column_configs $num spinnerStyle]
+                }
+                break
             }
-            break
         }
-    }
-    
-    # Current position in animation
-    set pos [dict get $_tasks $task_id anim_spin]
-    
-    if {![dict exists $_spinnerStyle $spinnerStyle]} {
-        zesty::throwError "'$spinnerStyle' not supported."
-    }
-    
-    set spinner_chars [dict get $_spinnerStyle $spinnerStyle]
+        
+        # Current position in animation
+        set pos [dict get $_tasks $task_id anim_spin]
+        
+        if {![dict exists $_spinnerStyle $spinnerStyle]} {
+            zesty::throwError "'$spinnerStyle' not supported."
+        }
+        
+        set spinner_chars [dict get $_spinnerStyle $spinnerStyle]
 
-    # Select current character in animation sequence
-    set char_index   [expr {$pos % [llength $spinner_chars]}]
-    set spinner_char [lindex $spinner_chars $char_index]
-    
-    # Use zesty::strLength to calculate visual width
-    set visual_width [zesty::strLength $spinner_char]
-    
-    # If character's visual width exceeds available width,
-    # return points.
-    if {$visual_width > $width} {
-        return [string repeat "." $width]
+        # Select current character in animation sequence
+        set char_index   [expr {$pos % [llength $spinner_chars]}]
+        set spinner_char [lindex $spinner_chars $char_index]
+        
+        # Use zesty::strLength to calculate visual width
+        set visual_width [zesty::strLength $spinner_char]
+        
+        # If character's visual width exceeds available width,
+        # return points.
+        if {$visual_width > $width} {
+            return [string repeat "." $width]
+        }
+        
+        # Calculate padding taking visual width into account
+        set total_padding [expr {$width - $visual_width}]
+        set padding_left  [expr {int($total_padding / 2)}]
+        set padding_right [expr {$total_padding - $padding_left}]
+        
+        # Create display with centered character
+        set spinner_text ""
+        append spinner_text [string repeat " " $padding_left]
+        append spinner_text [lindex $spinner_chars $char_index]
+        append spinner_text [string repeat " " $padding_right]
+        
+        # Using string length here because we want character length
+        # to ensure our string is exactly $width characters
+        set actual_length [string length $spinner_text]
+        
+        if {$actual_length > $width} {
+            # Truncate if too long
+            set spinner_text [string range $spinner_text 0 [expr {$width - 1}]]
+        } elseif {$actual_length < $width} {
+            # Add spaces if too short
+            append spinner_text [string repeat " " [expr {$width - $actual_length}]]
+        }
+        
+        return $spinner_text
     }
-    
-    # Calculate padding taking visual width into account
-    set total_padding [expr {$width - $visual_width}]
-    set padding_left  [expr {int($total_padding / 2)}]
-    set padding_right [expr {$total_padding - $padding_left}]
-    
-    # Create display with centered character
-    set spinner_text ""
-    append spinner_text [string repeat " " $padding_left]
-    append spinner_text [lindex $spinner_chars $char_index]
-    append spinner_text [string repeat " " $padding_right]
-    
-    # Using string length here because we want character length
-    # to ensure our string is exactly $width characters
-    set actual_length [string length $spinner_text]
-    
-    if {$actual_length > $width} {
-        # Truncate if too long
-        set spinner_text [string range $spinner_text 0 [expr {$width - 1}]]
-    } elseif {$actual_length < $width} {
-        # Add spaces if too short
-        append spinner_text [string repeat " " [expr {$width - $actual_length}]]
-    }
-    
-    return $spinner_text
-}
     
     method ProcessSetColumns {columns_list} {
         # Processes custom column configuration list.
