@@ -205,6 +205,19 @@ namespace eval zesty {
     }
 }
 
+proc zesty::SetTitle {text} {
+    # Sets console title.
+    #
+    # text - title text
+    #
+    # Returns: nothing or throws error if operation fails.
+    if {![k32::SetConsoleTitleW $text]} {
+        zesty::throwError "console title fails."
+    }
+    
+    return {}
+}
+
 proc zesty::getInfoConsole {handle} {
     # Gets console screen buffer information.
     #

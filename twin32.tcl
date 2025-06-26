@@ -3,6 +3,17 @@
 
 namespace eval zesty {}
 
+proc zesty::SetTitle {text} {
+    # Sets console title.
+    #
+    # text - title text
+    #
+    # Returns: nothing.
+    twapi::set_console_title $text
+    
+    return {}
+}
+
 proc zesty::getInfoConsole {handle} {
     # Gets console screen buffer information.
     #
