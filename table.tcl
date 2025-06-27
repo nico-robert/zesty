@@ -11,7 +11,6 @@ oo::class create zesty::Table {
     variable _isWindows
     variable _termWidth
     variable _termHeight
-    variable _tablestyles
     variable _col_index
 
     constructor {args} {
@@ -45,160 +44,55 @@ oo::class create zesty::Table {
         set _termHeight [lindex $size 1]
 
         # Table options
-        set _options {
-            title {
-                name ""
-                justify "center"
-                style {}
-            }
-            caption {
-                name ""
-                justify "center"
-                style {}
-            }
-            box {
-                type "rounded"
-                style {}
-            }
-            padding 1
-            showEdge 1
-            lines {
-                show 1
-                style {}
-            }
-            header {
-                show 1
-                style {}
-            }
-            footer {
-                show 1
-                style {}
-            }
-            keyPgup "p"
-            keyPgdn "f"
-            keyQuit "q"
-            maxVisibleLines 0
-            autoScroll 0     
-            pageScroll 0     
-            continuousScroll 0     
+        zesty::def _options "-title" -validvalue formatVKVP -type struct -with {
+            name    -validvalue {}           -type any|none  -default ""
+            style   -validvalue formatStyle  -type any|none  -default ""
+            justify -validvalue formatAlign  -type str       -default "center"
         }
-
-        set _column_configs {
-            name ""
-            style {}
-            justify "left"
-            vertical "middle"
-            width 0
-            minWidth 0
-            maxWidth 0
-            noWrap 0
+        zesty::def _options "-caption" -validvalue formatVKVP -type struct -with {
+            name    -validvalue {}           -type any|none  -default ""
+            style   -validvalue formatStyle  -type any|none  -default ""
+            justify -validvalue formatAlign  -type str       -default "center"
         }
-        
-        set _tablestyles {
-            single  {┌ ┐ └ ┘ │ ─ ┼ ┬ ┴ ├ ┤}
-            double  {╔ ╗ ╚ ╝ ║ ═ ╬ ╦ ╩ ╠ ╣}
-            rounded {╭ ╮ ╰ ╯ │ ─ ┼ ┬ ┴ ├ ┤}
-            thick   {┏ ┓ ┗ ┛ ┃ ━ ┃ ┳ ┻ ┣ ┫}
-            ascii   {+ + + + | - + + + + +}
+        zesty::def _options "-box" -validvalue formatVKVP  -type struct  -with {
+            type       -validvalue formatTypeTable  -type str        -default "rounded"
+            style      -validvalue formatStyle      -type any|none   -default ""
         }
-
-        my ConfigureTable {*}$args
-    }
-
-    method ConfigureTable {args} {
-        # Validates and applies configuration options for table
-        # appearance, behavior, and interaction settings.
-        #
-        # args - Configuration arguments in key-value pairs
-        #
-        # Returns nothing.
-        foreach {key value} $args {
-            switch -exact -- $key {
-                -keyPgup          -
-                -keyPgdn          -
-                -keyQuit          -
-                -showEdge         -
-                -pageScroll       -
-                -continuousScroll -
-                -autoScroll {dict set _options [string trimleft $key "-"] $value}
-                -padding    {
-                    zesty::isPositiveIntegerValue $key $value
-                    dict set _options padding $value
-                }
-                -maxVisibleLines    {
-                    zesty::isPositiveIntegerValue $key $value
-                    dict set _options maxVisibleLines $value
-                }
-                -title  - 
-                -caption {
-                    zesty::validateKeyValuePairs "$key" $value
-                    set key [string trimleft $key "-"]
-
-                    foreach {skey svalue} $value {
-                        switch -exact -- $skey {
-                            name     {dict set _options $key $skey $svalue}
-                            style    {
-                                zesty::validateKeyValuePairs "$skey" $svalue
-                                dict set _options $key $skey $svalue
-                            }
-                            justify  {
-                                set titleJustify {"center" "left" "right"}
-                                if {$svalue ni $titleJustify} {
-                                    set keyType [format {%s or %s.} \
-                                        [join [lrange $titleJustify 0 end-1] ", "] \
-                                        [lindex $titleJustify end] \
-                                    ]
-                                    zesty::throwError "'$svalue' must be one of: $keyType"
-                                }
-                                dict set _options $key $skey $svalue
-                            }
-                            default {zesty::throwError "'$skey' not supported."}  
-                        }
-                    }
-                }
-                -box {
-                    zesty::validateKeyValuePairs "$key" $value
-                    foreach {skey svalue} $value {
-                        switch -exact -- $skey {
-                            type  {
-                                set keys [dict keys $_tablestyles]
-                                if {$svalue ni $keys} {
-                                    set keyType [format {%s or %s.} \
-                                        [join [lrange $keys 0 end-1] ", "] [lindex $keys end] \
-                                    ]
-                                    zesty::throwError "'$svalue' must be one of: $keyType"
-                                }
-                                dict set _options box $skey $svalue
-                            }
-                            style {
-                                zesty::validateKeyValuePairs "$skey" $svalue
-                                dict set _options box $skey $svalue
-                            }
-                            default {zesty::throwError "'$skey' not supported."}  
-                        }
-                    }
-                }
-                -lines  -
-                -header -
-                -footer {
-                    zesty::validateKeyValuePairs "$key" $value
-                    set key [string trimleft $key "-"]
-
-                    foreach {skey svalue} $value {
-                        switch -exact -- $skey {
-                            show  {dict set _options $key $skey $svalue}
-                            style {
-                                zesty::validateKeyValuePairs "$skey" $svalue
-                                dict set _options $key $skey $svalue
-                            }
-                            default {zesty::throwError "'$skey' not supported."}  
-                        }
-                    }
-                }
-                default {zesty::throwError "'$key' not supported."}  
-            }
+        zesty::def _options "-padding"  -validvalue formatPad   -type num      -default 1
+        zesty::def _options "-showEdge" -validvalue {}          -type bool  -default "true"
+        zesty::def _options "-lines"    -validvalue formatVKVP  -type struct -with {
+            show  -validvalue {}           -type bool      -default "true"
+            style -validvalue formatStyle  -type any|none  -default ""
         }
-        return {}
+        zesty::def _options "-header"    -validvalue formatVKVP  -type struct -with {
+            show  -validvalue {}           -type bool      -default "true"
+            style -validvalue formatStyle  -type any|none  -default ""
+        }
+        zesty::def _options "-footer"    -validvalue formatVKVP  -type struct -with {
+            show  -validvalue {}           -type bool      -default "true"
+            style -validvalue formatStyle  -type any|none  -default ""
+        }
+        zesty::def _options "-keyPgup"          -validvalue {}        -type str|num  -default "p"
+        zesty::def _options "-keyPgdn"          -validvalue {}        -type str|num  -default "f"
+        zesty::def _options "-keyQuit"          -validvalue {}        -type str|num  -default "q"
+        zesty::def _options "-maxVisibleLines"  -validvalue formatMVL -type num      -default 0
+        zesty::def _options "-autoScroll"       -validvalue {}        -type bool     -default "false"
+        zesty::def _options "-pageScroll"       -validvalue {}        -type bool     -default "false"
+        zesty::def _options "-continuousScroll" -validvalue {}        -type bool     -default "false"
+
+        # Merge options and args
+        set _options [zesty::merge $_options $args]
+
+        # Column options
+        zesty::def _column_configs "-name"     -validvalue {}              -type any|none  -default ""
+        zesty::def _column_configs "-style"    -validvalue formatStyle     -type any|none  -default ""
+        zesty::def _column_configs "-justify"  -validvalue formatAlign     -type str       -default "left"
+        zesty::def _column_configs "-vertical" -validvalue formatVertical  -type str       -default "middle"
+        zesty::def _column_configs "-width"    -validvalue {}              -type num       -default 0
+        zesty::def _column_configs "-minWidth" -validvalue {}              -type num       -default 0
+        zesty::def _column_configs "-maxWidth" -validvalue {}              -type num       -default 0
+        zesty::def _column_configs "-noWrap"   -validvalue {}              -type bool      -default "false"
+
     }
 
     method PagedDisplay {fullContent} {
@@ -238,11 +132,11 @@ oo::class create zesty::Table {
 
         # Find line that separates header from content
         # (first line with "+" or "├" after header lines)
-        set headerEndLine [zesty::findFirstPattern $contentLines $_tablestyles]
+        set headerEndLine [zesty::findFirstPattern $contentLines $::zesty::tablestyles]
         if {$headerEndLine == -1} {set headerEndLine 0}
         # Find line that separates content from footer
         # (last line with "+" or "├" before footer lines)
-        set footerStartLine [zesty::findLastPattern $contentLines $_tablestyles]
+        set footerStartLine [zesty::findLastPattern $contentLines $::zesty::tablestyles]
         if {$footerStartLine == -1} {set footerStartLine $totalLines}
     
         # Determine fixed and scrollable parts
@@ -354,7 +248,7 @@ oo::class create zesty::Table {
         
         # Find line that separates header from content
         # (first line with "+" or "├" after header lines)
-        set headerEndLine [zesty::findFirstPattern $contentLines $_tablestyles]
+        set headerEndLine [zesty::findFirstPattern $contentLines $::zesty::tablestyles]
         if {$headerEndLine == -1} {set headerEndLine 0}
         
         # Fixed part (header)
@@ -432,20 +326,12 @@ oo::class create zesty::Table {
         # args - Column configuration arguments in key-value pairs
         #
         # Returns nothing.
-
-        set colopts $_column_configs
         incr _col_index
-        
-        foreach {key value} $args {
-            set key [string trimleft $key "-"]
-            if {[dict exists $_column_configs $key]} {
-                dict set colopts $key $value
-            } else {
-                zesty::throwError "Unknown column option: '$key'."
-            }
-        }
 
-        if {![dict exists $_column_configs name]} {
+        # Merge column options
+        set colopts [zesty::merge $_column_configs $args]
+
+        if {[dict get $colopts name] eq ""} {
             dict set colopts name "column:${_col_index}"
         }
 
@@ -917,11 +803,11 @@ oo::class create zesty::Table {
         set result ""
         set boxtype [dict get $_options box type]
 
-        if {![dict exists $_tablestyles $boxtype]} {
+        if {![dict exists $::zesty::tablestyles $boxtype]} {
             zesty::throwError "$boxtype is not a valid box type"
         }
 
-        set boxchars [dict get $_tablestyles $boxtype]
+        set boxchars [dict get $::zesty::tablestyles $boxtype]
         set tl  [lindex $boxchars 0]  ;# Top Left corner
         set tr  [lindex $boxchars 1]  ;# Top Right corner
         set bl  [lindex $boxchars 2]  ;# Bottom Left corner

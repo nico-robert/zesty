@@ -18,58 +18,24 @@ proc zesty::jsonDecode {args} {
     package require huddle::json
 
     # Default options
-    set options {
-        json            {}
-        dumpJSONOptions {
-            offset "  " newline "\n" begin ""
-        }
-        style {
-            key     {fg 10}
-            str     {fg 10}
-            num     {fg 11}
-            null    {fg 4}
-            boolean {fg 5 italic 1}
-            lineNum {fg 254 reverse 1}
-        }
-        showLinesNumber true
+    zesty::def options "-json"            -validvalue {} -type list|none -default {}
+    zesty::def options "-dumpJSONOptions" -validvalue formatVKVP -type struct -with {
+        offset    -validvalue {}  -type str|none  -default "  "
+        newline   -validvalue {}  -type str|none  -default "\n"
+        begin     -validvalue {}  -type any|none  -default ""
     }
-
-    # Process constructor arguments with validation
-    zesty::validateKeyValuePairs "args" $args
-
-    foreach {key value} $args {
-        switch -exact -- $key {
-            -json            {dict set options json $value}
-            -dumpJSONOptions {
-                zesty::validateKeyValuePairs "$key" $value
-
-                foreach {dumpkey dumpvalue} $value {
-                    switch -exact -- $dumpkey {
-                        offset  -
-                        newline -
-                        begin   {dict set options dumpJSONOptions $dumpkey $dumpvalue}
-                        default {zesty::throwError "'$dumpkey' not supported."}  
-                    }
-                }
-            }
-            -style {
-                zesty::validateKeyValuePairs "$key" $value
-                foreach {skey svalue} $value {
-                    zesty::validateKeyValuePairs "$skey" $svalue
-                    switch -exact -- $skey {
-                        key     -
-                        str     -
-                        num     -
-                        null    -
-                        boolean {dict set options style $skey $svalue}
-                        default {zesty::throwError "'$skey' not supported."}  
-                    }
-                }
-            }
-            -showLinesNumber {dict set options showLinesNumber $value}
-            default {zesty::throwError "'$key' not supported."}  
-        }
+    zesty::def options "-style" -validvalue formatVKVP -type struct -with {
+        key       -validvalue formatStyle  -type any|none  -default {fg 10}
+        str       -validvalue formatStyle  -type any|none  -default {fg 10}
+        num       -validvalue formatStyle  -type any|none  -default {fg 11}
+        null      -validvalue formatStyle  -type any|none  -default {fg 4}
+        boolean   -validvalue formatStyle  -type any|none  -default {fg 5 italic 1}
+        lineNum   -validvalue formatStyle  -type any|none  -default {fg 254 reverse 1}
     }
+    zesty::def options "-showLinesNumber"  -validvalue {} -type bool  -default "true"
+
+    # Merge options and args
+    set options [zesty::merge $options $args]
 
     if {[dict get $options json] eq ""} {
         zesty::throwError "No json provided"

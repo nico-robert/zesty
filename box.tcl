@@ -20,192 +20,35 @@ proc zesty::box {args} {
     # title. Supports multiple box styles, content alignment, table
     # mode, and intelligent content truncation.
 
-    # Default options
-    set options {
-        title {
-            name {}
-            style {}
-            anchor "nc"
-        }
-        paddingX 1
-        paddingY 0
-        content {
-            text {}
-            align "left"
-            style {}
-            table {
-                enabled "false"
-                columns {}
-                alignments {}
-                separator " "
-                styles {}
-            }
-        }
-        box {
-            type "rounded"
-            style {}
-            size {}
-            fullScreen "false"
-        }
-        formatCmdBoxMsgtruncated {}
+    zesty::def options "-title" -validvalue formatVKVP -type struct -with {
+        name    -validvalue {}                -type any|none  -default ""
+        style   -validvalue formatStyle       -type any|none  -default ""
+        anchor  -validvalue formatTitleAnchor -type str       -default "nc"
     }
-
-    set boxstyles {
-        single  {┌ ┐ └ ┘ │ ─}
-        double  {╔ ╗ ╚ ╝ ║ ═}
-        rounded {╭ ╮ ╰ ╯ │ ─}
-        thick   {┏ ┓ ┗ ┛ ┃ ━}
-        ascii   {+ + + + | -}
-    }
-
-    set titleAnchor {
-        ne nc nw
-        sw sc se
-        en ec es
-        wn wc ws
-    }
-
-    # Process constructor arguments with validation
-    zesty::validateKeyValuePairs "args" $args
-
-    foreach {key value} $args {
-        switch -exact -- $key {
-            -padding    {
-                zesty::isPositiveIntegerValue $key $value
-                dict set options paddingX $value
-                dict set options paddingY $value
-            }
-            -paddingX    {
-                zesty::isPositiveIntegerValue $key $value
-                dict set options paddingX $value
-            }
-            -paddingY    {
-                zesty::isPositiveIntegerValue $key $value
-                dict set options paddingY $value
-            }
-            -title   {
-                zesty::validateKeyValuePairs "$key" $value
-
-                foreach {skey svalue} $value {
-                    switch -exact -- $skey {
-                        name     {dict set options title $skey $svalue}
-                        style    {
-                            zesty::validateKeyValuePairs "$skey" $svalue
-                            dict set options title $skey $svalue
-                        }
-                        anchor  {
-                            set keys $titleAnchor
-                            if {$svalue ni $titleAnchor} {
-                                set keyType [format {%s or %s.} \
-                                    [join [lrange $titleAnchor 0 end-1] ", "] \
-                                    [lindex $titleAnchor end] \
-                                ]
-                                zesty::throwError "'$svalue' must be one of: $keyType"
-                            }
-                            dict set options title $skey $svalue
-                        }
-                        default {zesty::throwError "'$skey' not supported."}  
-                    }
-                }
-            }
-            -content {
-                zesty::validateKeyValuePairs "$key" $value
-
-                foreach {skey svalue} $value {
-                    switch -exact -- $skey {
-                        text  {dict set options content $skey $svalue}
-                        align {
-                            if {$svalue ni {"left" "right" "center"}} {
-                                zesty::throwError "align must be one of: left, right, center"
-                            }
-                            dict set options content $skey $svalue
-                        }
-                        style {
-                            zesty::validateKeyValuePairs "$skey" $svalue
-                            dict set options content $skey $svalue
-                        }
-                        table {
-                            zesty::validateKeyValuePairs "$skey" $svalue
-                            foreach {tkey tvalue} $svalue {
-                                switch -exact -- $tkey {
-                                    enabled {
-                                        zesty::isBooleanValue $tkey $tvalue
-                                        dict set options content table $tkey $tvalue
-                                    }
-                                    columns {
-                                        foreach width $tvalue {
-                                            if {![string is integer -strict $width] || ($width == 0)} {
-                                                zesty::throwError "Column widths must be integers or\
-                                                       width equal to -1 for column width auto"
-                                            }
-                                        }
-                                        dict set options content table $tkey $tvalue
-                                    }
-                                    alignments {
-                                        foreach align $tvalue {
-                                            if {$align ni {"left" "right" "center"}} {
-                                                zesty::throwError "align column table must be one of\
-                                                       : left, right, center"
-                                            }
-                                        }
-                                        dict set options content table $tkey $tvalue
-                                    }
-                                    separator {dict set options content table $tkey $tvalue}
-                                    styles    {dict set options content table $tkey $tvalue}
-                                    default   {zesty::throwError "'$tkey' not supported in table."}
-                                }
-                            }
-                        }
-                        default {zesty::throwError "'$skey' not supported."}  
-                    }
-                }                
-            }
-            -box {
-                zesty::validateKeyValuePairs "$key" $value
-                foreach {skey svalue} $value {
-                    switch -exact -- $skey {
-                        type  {
-                            set keys [dict keys $boxstyles]
-                            if {$svalue ni $keys} {
-                                set keyType [format {%s or %s.} \
-                                    [join [lrange $keys 0 end-1] ", "] [lindex $keys end] \
-                                ]
-                                zesty::throwError "'$svalue' must be one of: $keyType"
-                            }
-                            dict set options box $skey $svalue
-                        }
-                        style {
-                            zesty::validateKeyValuePairs "$skey" $svalue
-                            dict set options box $skey $svalue
-                        }
-                        size {
-                            if {[llength $svalue] != 2} {
-                                zesty::throwError "'$skey' must be a list of two\
-                                                    integers {width height}"
-                            }
-                            lassign $svalue width height
-                            # validate width and height
-                            zesty::isPositiveIntegerValue $skey $width
-                            zesty::isPositiveIntegerValue $skey $height
-                            dict set options box size $svalue
-                        }
-                        fullScreen {
-                            zesty::isBooleanValue $skey $svalue
-                            dict set options box fullScreen $svalue
-                        }
-                        default {zesty::throwError "'$skey' not supported."}  
-                    }
-                }
-            }
-            -formatCmdBoxMsgtruncated {
-                if {[info commands $value] eq ""} {
-                    zesty::throwError "A command must be associated with '$key'"
-                }
-                dict set options formatCmdBoxMsgtruncated $value
-            }
-            default {zesty::throwError "'$key' not supported."}  
+    zesty::def options "-paddingX" -validvalue formatPad -type num  -default 1
+    zesty::def options "-paddingY" -validvalue formatPad -type num  -default 0
+    zesty::def options "-content" -validvalue formatVKVP -type struct -with {
+        text   -validvalue {}           -type any|none   -default ""
+        align  -validvalue formatAlign  -type str        -default "left"
+        style  -validvalue formatStyle  -type any|none   -default ""
+        table  -validvalue formatVKVP   -type struct     -with {
+            enabled     -validvalue {}  -type bool       -default "false"
+            columns     -validvalue formatColums       -type any|none   -default ""
+            alignments  -validvalue formatAlignements  -type any|none   -default ""
+            separator   -validvalue {}                 -type str|none   -default " "
+            styles      -validvalue formatStyles       -type any|none   -default ""
         }
     }
+    zesty::def options "-box" -validvalue formatVKVP   -type struct  -with {
+        type       -validvalue formatTypeBox  -type str        -default "rounded"
+        style      -validvalue formatStyle    -type any|none   -default ""
+        size       -validvalue formatSizeBox  -type any|none   -default ""
+        fullScreen -validvalue {}             -type bool       -default "false"
+    }
+    zesty::def options "-formatCmdBoxMsgtruncated"  -validvalue {}  -type cmd|none  -default ""
+
+    # Merge options and args
+    set options [zesty::merge $options $args]
 
     set title [dict get $options title name]
     set title_anchor [dict get $options title anchor]
@@ -220,7 +63,7 @@ proc zesty::box {args} {
     # Extract border characters + apply style
     set box_type [dict get $options box type]
     set box_style [dict get $options box style]
-    foreach {top_left top_right bottom_left bottom_right vertical horizontal} [dict get $boxstyles $box_type] {
+    foreach {top_left top_right bottom_left bottom_right vertical horizontal} [dict get $::zesty::boxstyles $box_type] {
         set top_left     [zesty::parseStyleDictToXML $top_left $box_style]
         set top_right    [zesty::parseStyleDictToXML $top_right $box_style]
         set bottom_left  [zesty::parseStyleDictToXML $bottom_left $box_style]

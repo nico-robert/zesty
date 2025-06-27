@@ -26,7 +26,6 @@ oo::class create zesty::Bar {
     variable _cache_valid
     variable _column_widths_cache
     variable _isWindows
-    variable _spinnerStyle
 
     constructor {args} {
         # Initialize progress bar with configurable options.
@@ -65,116 +64,31 @@ oo::class create zesty::Bar {
         set _isWindows 0
 
         # Default options
-        set _options {
-            minColumnWidth 5
-            minBarWidth 10
-            ellipsisThreshold 4
-            barChar "━"
-            bgBarChar "━"
-            leftBarDelimiter ""
-            rightBarDelimiter ""
-            indeterminateBarStyle "bounce"
-            spinnerFrequency 100
-            indeterminateSpeed -2
-            setColumns {}
-            colorBarChar "red"
-            colorBgBarChar "Gray80"
-            headers {
-                show false
-                set {}
-            }
-            lineHSeparator {
-                show false
-                style {}
-                char "─"
-            }
+        zesty::def _options "-headers" -validvalue formatVKVP  -type struct -with {
+            show    -validvalue {}           -type bool      -default "false"
+            set     -validvalue formatHSets  -type any|none  -default ""
         }
-        # Define characters for different spinner styles
-        set _spinnerStyle {
-            dots   {⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏}
-            line   {| / - \\}
-            circle {◐ ◓ ◑ ◒}
-            emoji  {😂 😭 😌}
-            arrows {← ↖ ↑ ↗ → ↘ ↓ ↙}
-            bars   {▁ ▃ ▄ ▅ ▆ ▇ █ ▇ ▆ ▅ ▄ ▃}
-            moon   {🌑 🌒 🌓 🌔 🌕 🌖 🌗 🌘}
+        zesty::def _options "-lineHSeparator" -validvalue formatVKVP -type struct -with {
+            show    -validvalue {}           -type bool      -default "false"
+            style   -validvalue formatStyle  -type any|none  -default ""
+            char    -validvalue formatLChar  -type any       -default "─"
         }
-   
-        # Process constructor arguments with validation
-        zesty::validateKeyValuePairs "args" $args
-        
-        foreach {key value} $args {
-            switch -exact -- $key {
-                -minColumnWidth    {
-                    zesty::isPositiveIntegerValue $key $value 1
-                    dict set _options minColumnWidth $value
-                }
-                -minBarWidth {
-                    zesty::isPositiveIntegerValue $key $value 5
-                    dict set _options minBarWidth $value
-                }
-                -ellipsisThreshold {
-                    zesty::isPositiveIntegerValue $key $value
-                    dict set _options ellipsisThreshold $value
-                }
-                -barChar            {dict set _options barChar $value}
-                -bgBarChar          {dict set _options bgBarChar $value}
-                -leftBarDelimiter   {dict set _options leftBarDelimiter $value}
-                -rightBarDelimiter  {dict set _options rightBarDelimiter $value}
-                -indeterminateSpeed {
-                    if {$value == 0} {
-                        zesty::throwError "'$key' should not be equal to '0'"
-                    }
-                    dict set _options indeterminateSpeed $value
-                }
-                -indeterminateBarStyle {
-                    if {$value ni {"bounce" "pulse" "wave"}} {
-                        zesty::throwError "'$key' must be one of: bounce, pulse or wave."
-                    }
-                    dict set _options indeterminateBarStyle $value
-                }
-                -spinnerFrequency {
-                    zesty::isPositiveIntegerValue $key $value 1
-                    dict set _options spinnerFrequency $value
-                }
-                -colorBarChar       {dict set _options colorBarChar $value}
-                -colorBgBarChar     {dict set _options colorBgBarChar $value}
-                -setColumns         {dict set _options setColumns $value}
-                -lineHSeparator     {
-                    zesty::validateKeyValuePairs "$key" $value
+        zesty::def _options "-minColumnWidth"         -validvalue formatMCWidth  -type num           -default 5
+        zesty::def _options "-minBarWidth"            -validvalue formatMBWidth  -type num           -default 10
+        zesty::def _options "-ellipsisThreshold"      -validvalue {}             -type num           -default 4
+        zesty::def _options "-barChar"                -validvalue {}             -type str           -default "━"
+        zesty::def _options "-bgBarChar"              -validvalue {}             -type str           -default "━"
+        zesty::def _options "-leftBarDelimiter"       -validvalue {}             -type str|none      -default ""
+        zesty::def _options "-rightBarDelimiter"      -validvalue {}             -type str|none      -default ""
+        zesty::def _options "-indeterminateBarStyle"  -validvalue formatIBStyle  -type str           -default "bounce"
+        zesty::def _options "-spinnerFrequency"       -validvalue formatSFreq    -type num           -default 100
+        zesty::def _options "-indeterminateSpeed"     -validvalue formatIBSpeed  -type num           -default -2
+        zesty::def _options "-colorBarChar"           -validvalue {}             -type str|num|none  -default "red"
+        zesty::def _options "-colorBgBarChar"         -validvalue {}             -type str|num|none  -default "Gray80"
+        zesty::def _options "-setColumns"             -validvalue {}             -type any|none      -default ""
 
-                    foreach {skey svalue} $value {
-                        switch -exact -- $skey {
-                            show  {dict set _options lineHSeparator $skey $svalue}
-                            char  {
-                                if {[string length $svalue] != 1} {
-                                    zesty::throwError "This 'key' must have a length equal to 1."
-                                }
-                                dict set _options lineHSeparator $skey $svalue
-                            }
-                            style {
-                                zesty::validateKeyValuePairs "$skey" $svalue
-                                
-                                dict set _options lineHSeparator $skey $svalue
-                            }
-                            default {zesty::throwError "'$skey' not supported."}  
-                        }
-                    }
-                }
-                -headers {
-                    zesty::validateKeyValuePairs "$key" $value
-                    
-                    foreach {skey svalue} $value {
-                        switch -exact -- $skey {
-                            show {dict set _options headers $skey $svalue}
-                            set  {dict set _options headers $skey $svalue}
-                            default {zesty::throwError "'$skey' not supported."}  
-                        }
-                    }
-                }
-                default {zesty::throwError "'$key' not supported"}  
-            }
-        }
+        # Merge options and args
+        set _options [zesty::merge $_options $args]
 
         # Default column configuration
         foreach {index type} {0 zName 1 zCount 2 zBar 3 zPercent 4 zElapsed 5 zRemaining} {
@@ -250,7 +164,7 @@ oo::class create zesty::Bar {
         #
         # Returns: nothing.
         if {![dict exists $_column_configs $column_num]} {
-            zesty::throwError "Column $column_num does not exist"
+            zesty::throwError "Column: '$column_num' does not exist."
         }
         dict set _header_configs $column_num $data
         
@@ -265,14 +179,11 @@ oo::class create zesty::Bar {
         #
         # Returns: nothing.
 
-        zesty::validateKeyValuePairs "headers" $config
-
         if {![dict get $_options headers show]} {
             zesty::throwError "Headers are not enabled"
         }
 
         foreach {key value} $config {
-            zesty::validateKeyValuePairs "$key" $value
             my ConfigureHeader $key $value
         }
         
@@ -510,11 +421,11 @@ oo::class create zesty::Bar {
         # Current position in animation
         set pos [dict get $_tasks $task_id anim_spin]
         
-        if {![dict exists $_spinnerStyle $spinnerStyle]} {
+        if {![dict exists $::zesty::spinnerstyles $spinnerStyle]} {
             zesty::throwError "'$spinnerStyle' not supported."
         }
         
-        set spinner_chars [dict get $_spinnerStyle $spinnerStyle]
+        set spinner_chars [dict get $::zesty::spinnerstyles $spinnerStyle]
 
         # Select current character in animation sequence
         set char_index   [expr {$pos % [llength $spinner_chars]}]
@@ -658,7 +569,7 @@ oo::class create zesty::Bar {
         }
 
         if {![dict exists $_column_configs $num]} {
-            zesty::throwError "Column '$num' does not exist"
+            zesty::throwError "Column '$num' does not exist."
         }
         
         # Validate args
@@ -680,9 +591,9 @@ oo::class create zesty::Bar {
                     dict set _column_configs $num align $value
                 } 
                 -spinnerStyle {
-                    if {![dict exists $_spinnerStyle $value]} {
+                    if {![dict exists $::zesty::spinnerstyles $value]} {
                         zesty::throwError "spinnerStyle must be one of:\
-                        [join [dict keys $_spinnerStyle] ","]"
+                        [join [dict keys $::zesty::spinnerstyles] ","]"
                     }
                     dict set _column_configs $num spinnerStyle $value
                 }
@@ -738,9 +649,9 @@ oo::class create zesty::Bar {
                     dict set _column_configs $num align $value
                 }
                 -spinnerStyle {
-                    if {![dict exists $_spinnerStyle $value]} {
+                    if {![dict exists $::zesty::spinnerstyles $value]} {
                         zesty::throwError "spinnerStyle must be one of:\
-                              [join [dict keys $_spinnerStyle] ","]"
+                              [join [dict keys $::zesty::spinnerstyles] ","]"
                     }
                     dict set _column_configs $num spinnerStyle $value
                 }
@@ -849,7 +760,7 @@ oo::class create zesty::Bar {
         # Returns nothing.
 
         if {![dict exists $_tasks $task_id]} {
-            zesty::throwError "Task ID $task_id does not exist"
+            zesty::throwError "Task ID '$task_id' does not exist."
         }
 
         # Save old state to detect if task just completed
@@ -941,7 +852,7 @@ oo::class create zesty::Bar {
         #
         # Returns nothing.
         if {![dict exists $_tasks $task_id]} {
-            zesty::throwError "Task ID $task_id does not exist"
+            zesty::throwError "Task ID $task_id does not exist."
         }
 
         my update $task_id -advance $steps
@@ -1764,7 +1675,7 @@ oo::class create zesty::Bar {
 
         # Check if task exists
         if {![dict exists $_tasks $task_id]} {
-            zesty::throwError "Task ID $task_id does not exist"
+            zesty::throwError "Task ID $task_id does not exist."
         }
         
         # Check if column exists and is visible
@@ -1772,7 +1683,7 @@ oo::class create zesty::Bar {
             ![dict exists $_column_configs $column_num] || 
             ![dict get $_column_configs $column_num visible]
         } {
-            zesty::throwError "Column $column_num does not exist or is not visible"
+            zesty::throwError "Column $column_num does not exist or is not visible."
         }
 
         # Calculate column widths
