@@ -152,30 +152,6 @@ proc zesty::isWindows {} {
     return [expr {$::tcl_platform(platform) eq "windows"}]
 }
 
-proc zesty::run {delay current end body} {
-    # Asynchronous loop runner.
-    # Runs the loop with given parameters.
-    #
-    # delay   - delay between iterations
-    # current - current value
-    # end     - ending value (exclusive)
-    # body    - loop body code to executed
-    #
-    # Returns nothing.
-
-    if {$current >= $end} {
-        set ::$::token 1
-        return
-    }
-
-    # Execute the loop body
-    uplevel #0 $body
-    incr current
-
-    after $delay [list zesty::run $delay $current $end $body]
-}
-
-
 proc zesty::loop {args} {
     # Creates an asynchronous loop with specified parameters.
     #
@@ -810,7 +786,6 @@ proc zesty::smartTruncateStyledText {styled_text target_length add_ellipsis} {
     return $result
 }
 
-
 proc zesty::findLastPattern {contentLines typeStyle} {
     # Searches for the last occurrence of a pattern in a list of lines.
     # The pattern is generated from the characters in the style lists.
@@ -907,6 +882,20 @@ proc zesty::hideCursor {} {
     flush stdout
 }
 
+proc zesty::SetTerminalTitle {text} {
+    # Sets terminal title.
+    #
+    # text - terminal title
+    #
+    # Returns nothing.
+    if {[zesty::isWindows]} {
+        zesty::SetTitle $text
+    } else {
+        puts -nonewline "\033]0;$text\007"
+        flush stdout
+    }
+}
+
 proc zesty::showCursor {} {
     # Sends ANSI escape sequences to show cursor.
     #
@@ -929,6 +918,14 @@ proc zesty::strLength {text} {
     for {set i 0} {$i < [string length $text]} {incr i} {
         set char [string index $text $i]
         set codepoint [scan $char %c]
+
+        # Control characters (zero width)
+        if {
+            ($codepoint <= 0x1F) ||
+            ($codepoint >= 0x7F && $codepoint <= 0x9F)
+        } {
+            continue
+        }
 
         # Determine if this is a wide character (emoji or CJK characters)
         if {
@@ -955,7 +952,6 @@ proc zesty::strLength {text} {
     
     return $width
 }
-
 
 proc zesty::throwError {msg} {
     # Throws an error.
@@ -995,22 +991,510 @@ proc zesty::isPositiveIntegerValue {key value {limit 0}} {
 
     if {![string is integer -strict $value] || ($value < $limit)} {
         if {$limit > 0} {
-            zesty::throwError "'$key' must be greater than $limit."
+            error "zesty(error): '$key' must be greater than $limit."
         } else {
-            zesty::throwError "'$key' must be a positive integer."
+            error "zesty(error): '$key' must be a positive integer."
         }
     }
 }
 
-proc zesty::isBooleanValue {key value} {
-    # Checks if key value is boolean value.
+proc zesty::isListOfList {args} {
+    # Checks if the 'value' is of type list of list.
     #
-    # key   - key name.
-    # value - integer value.
+    # args - list
+    #
+    # Returns true if value is a list of list,
+    # false otherwise.
+
+    # Cleans up the list of braces, spaces.
+    regsub -all -line {(^\s+)|(\s+$)|\n|\t} $args {} str
+
+    return [expr {
+            [string range $str 0 1] eq "\{\{" &&
+            [string range $str end-1 end] eq "\}\}"
+        }
+    ]
+}
+
+proc zesty::findWithBounds {lines start_index} {
+    # Finds the start and end indices of a block of lines with
+    # matching brace characters.
+    #
+    # lines - list of lines to search in.
+    # start_index - index of the line to start searching from.
+    #
+    # Returns a list of three elements
+    set start_idx -1
+    set end_idx -1
+
+    for {set i $start_index} {$i < [llength $lines]} {incr i} {
+        if {[string first "\{" [lindex $lines $i]] >= 0} {
+            set start_idx [expr {$i + 1}]
+            break
+        }
+    }
+
+    if {$start_idx >= 0} {
+        set buffer [lindex $lines $start_index]
+        set j $start_index
+        
+        while {![info complete $buffer] && $j < [llength $lines] - 1} {
+            incr j
+            append buffer " [lindex $lines $j]"
+        }
+
+        set end_idx [expr {$j - 1}]
+        return [list $start_idx $end_idx [expr {$j + 1}]]
+    }
+    
+    return {-1 -1 -1}
+}
+
+proc zesty::def {d key args} {
+    # Set dict definition with value type and default value.
+    # An error exception is raised if args value is not found.
+    #
+    # d - dict
+    # key - dict key
+    # args - type, default, validvalue.
+    #
+    # Returns dictionary
+    upvar 1 $d _dict
+
+    foreach {k value} $args {
+        switch -exact -- $k {
+            -validvalue {set validvalue $value}
+            -type {set type $value}
+            -default {set default $value}
+            -with {
+                set temp_dict {}
+                set lines {}
+                foreach line [split $value "\n"] {
+                    set line [string trim $line]
+                    if {[string length $line] > 0} {
+                        lappend lines $line
+                    }
+                }
+                set j 0
+                
+                while {$j < [llength $lines]} {
+                    set line [lindex $lines $j]
+                    
+                    if {$line eq "\}"} {incr j; continue}
+
+                    if {[string match {*-with*} $line]} {
+                        set lsplit [split $line]
+                        set lkey   [lindex $lsplit 0]
+                        set ltype  [lsearch $lsplit *-type*]
+                        set lvalid [lsearch $lsplit *-validvalue*]
+                        if {$ltype  < 0} {
+                            zesty::throwError "Missing 'type' for '$lkey'"
+                        }
+                        if {$lvalid < 0} {
+                            zesty::throwError "Missing 'validvalue' for '$lkey'"
+                        }
+                        lassign [zesty::findWithBounds $lines $j] start_idx end_idx next_j
+                        
+                        if {($start_idx >= 0) && ($end_idx >= 0)} {
+                            set d_temp {}
+                            set ltype  [lindex $lsplit $ltype+1]
+                            set lvalid [lindex $lsplit $lvalid+1]
+                            set sub_content [join [lrange $lines $start_idx $end_idx] "\n"]
+                            zesty::def d_temp "temp" -validvalue $lvalid -type $ltype -with $sub_content
+                            set processed_content [lindex [dict get $d_temp "temp"] 0]
+                            dict set temp_dict $lkey [list $processed_content $ltype $lvalid]
+                            set j $next_j
+                        } else {
+                            incr j
+                        }
+                    } else {
+                        # simple line
+                        zesty::def temp_dict {*}$line
+                        incr j
+                    }
+                }
+                set default $temp_dict
+            }
+            default {zesty::throwError "Unknown key '$k' specified"}
+        }
+    }
+    
+    dict set _dict $key [list $default $type $validvalue]
+}
+
+proc zesty::getBaseDict {type_dict {prefix ""}} {
+    # Recursively extracts a flattened dictionary of keys with their default
+    # values, types, and valid values from a nested type dictionary.
+    #
+    # type_dict - nested dictionary containing type definitions
+    # prefix    - string to prepend to keys for namespacing (optional)
+    #
+    # Returns: a flattened dictionary with full keys and their definitions
+    
+    set result_dict {}
+
+    foreach key [dict keys $type_dict] {
+        # Construct the full key with prefix if provided
+        set full_key [expr {$prefix eq "" ? $key : "$prefix.$key"}]
+
+        # Retrieve the definition of the current key
+        set definition    [dict get $type_dict $key]
+        set default_value [lindex $definition 0]
+        set type          [lindex $definition 1]
+        set validvalue    [lindex $definition 2]
+
+        if {$type eq "struct"} {
+            zesty::validValue $type $key $validvalue $default_value
+            # If the type is a structure, process its sub-keys recursively
+            set sub_result [zesty::getBaseDict $default_value $full_key]
+            
+            # Merge the results of the sub-keys into the result dictionary
+            dict for {sub_key sub_info} $sub_result {
+                dict set result_dict $sub_key $sub_info
+            }
+        } else {
+            # If it's a final value, add it to the result dictionary
+            dict set result_dict $full_key [list value $default_value type $type validvalue $validvalue]
+        }
+    }
+
+    return $result_dict
+}
+
+proc zesty::getUserDict {flat_dict type_dict {prefix ""}} {
+    # Recursively extracts a user-provided dictionary of keys with their values,
+    # types, and valid values from a nested type dictionary.
+    #
+    # flat_dict - user-provided dictionary containing key-value pairs
+    # type_dict - nested dictionary containing type definitions
+    # prefix    - string to prepend to keys for namespacing (optional)
+    #
+    # Returns: a recursively constructed dictionary with full keys and their
+    # definitions
+
+    set result_dict {}
+    
+    foreach {key value} $flat_dict {
+        # Construct the full key with prefix if provided
+        set full_key [expr {$prefix eq "" ? $key : "$prefix.$key"}]
+        
+        # Search for this key directly in the current type dictionary
+        if {[dict exists $type_dict $key]} {
+            # Retrieve the definition of the current key
+            set definition    [dict get $type_dict $key]
+            set default_value [lindex $definition 0]
+            set type          [lindex $definition 1]
+            set validvalue    [lindex $definition 2]
+            
+            if {$type eq "struct"} {
+                zesty::validValue $type $key $validvalue $default_value
+                # If the type is a structure, process its sub-keys recursively
+                set sub_result [zesty::getUserDict $value $default_value $full_key]
+                # Merge the results of the sub-keys into the result dictionary
+                dict for {sub_key sub_info} $sub_result {
+                    dict set result_dict $sub_key $sub_info
+                }
+            } else {
+                # If it's a final value, add it to the result dictionary
+                dict set result_dict $full_key [list value $value type $type validvalue $validvalue]
+            }
+        } else {
+            # If the key doesn't exist in the current type dictionary, add the
+            # value with empty type and valid values.
+            dict set result_dict $full_key [list value $value type {} validvalue {}]
+        }
+    }
+    
+    return $result_dict
+}
+
+proc zesty::keyCompare {kd kother} {
+    # Output an error message if key name doesn't exist 
+    # in key default option.
+    #
+    # kd     - keys dict (default option(s))
+    # kother - keys user
+    #
+    # Returns nothing
+    foreach used_key $kother {
+        if {$used_key ni $kd} {
+            error "Unknown key '$used_key' specified."
+        }
+    }
+}
+
+proc zesty::typeOf {value} {
+    # Guess the type of the value.
+    # 
+    # value - string
+    #
+    # Returns type of value
+
+    if {$value eq ""} {
+        return none
+    }
+
+    if {[string is integer -strict $value]} {
+        return num
+    }
+
+    if {[string equal -nocase "true" $value] ||
+        [string equal -nocase "false" $value]} {
+        return bool
+    }
+
+    if {[info commands $value] ne ""} {
+        return cmd
+    }
+
+    if {[zesty::isListOfList $value]} {
+        return list
+    }
+
+    return str
+}
+
+proc zesty::matchTypeOf {mytype type keyt} {
+    # Guess type, follow optional list.
+    # 
+    # mytype - type
+    # type   - list default type
+    # keyt   - upvar key type
+    #
+    # Returns true if mytype is found, 
+    # false otherwise.
+    upvar 1 $keyt typekey
+
+    foreach valtype [split $type "|"] {
+        if {[string match $mytype $valtype]} {
+            set typekey $valtype
+            return 1
+        }
+    }
+
+    if {$type in {"any|none" "any"}} {
+        set typekey "any"
+        return 1
+    }
+
+    return 0
+}
+
+proc zesty::merge {d other} {
+    # Merge 2 dictionaries and control the type of value.
+    # An error exception is raised if type of value doesn't match.
+    #
+    # d      - dict (default option(s))
+    # other  - list values
+    #
+    # Returns a new dictionary
+
+    zesty::validateKeyValuePairs "args" $other
+
+    set base_dict [zesty::getBaseDict $d]
+    set user_dict [zesty::getUserDict $other $d]
+
+    # Compare keys
+    zesty::keyCompare [dict keys $base_dict] \
+                      [dict keys $user_dict]
+
+    set _dict [dict create]
+
+    dict for {key info} $base_dict {
+
+        if {[dict exists $user_dict $key]} {
+            set value [dict get $user_dict $key value]
+            set type  [dict get $user_dict $key type]
+            set mytype [zesty::typeOf $value]
+
+            # Check type in default list
+            if {![zesty::matchTypeOf $mytype $type typekey]} {
+                error "type 'set' should be '$type' instead of '$mytype'\
+                    for this key '$key'."
+            }
+
+            set v_value [dict get $user_dict $key validvalue]
+
+            zesty::validValue $typekey $key $v_value $value
+
+            set clean_key [string trimleft $key "-"]
+            dict set _dict {*}[split $clean_key "."] $value
+        } else {
+            set value [dict get $info value]
+            set type  [dict get $info type]
+            set mytype [zesty::typeOf $value]
+
+            # Check type in default list
+            if {![zesty::matchTypeOf $mytype $type typekey]} {
+                error "type 'default' should be '$type' instead of '$mytype'\
+                    for this key '$key'."
+            }
+
+            set v_value [dict get $base_dict $key validvalue]
+
+            zesty::validValue $typekey $key $v_value $value
+
+            set clean_key [string trimleft $key "-"]
+            dict set _dict {*}[split $clean_key "."] $value
+        }
+    }
+
+    return $_dict
+}
+
+
+proc zesty::validValue {type key validvalue value} {
+    # Check if value is valid.
+    # 
+    # type     - type
+    # key      - key
+    # validvalue - valid value
+    # value    - value
     #
     # Returns nothing or an error message if invalid.
+    variable boxstyles
+    variable titleAnchor
+    variable tablestyles
 
-    if {![string is boolean -strict $value]} {
-        zesty::throwError "'$key' must be a boolean value."
+    if {$validvalue eq "" || $type eq "none"} {
+        return {}
+    }
+
+    switch -exact -- $validvalue {
+
+        formatStyle {
+            zesty::validateKeyValuePairs $key $value
+        }
+
+        formatHSets {
+            zesty::validateKeyValuePairs $key $value
+            foreach {skey svalue} $value {
+                zesty::validateKeyValuePairs $skey $svalue
+            }
+        }
+
+        formatAlign {
+            if {$value ni {"left" "right" "center"}} {
+                error "zesty(error): value '$value' should be\
+                    'left', 'right', or 'center' for\
+                    this key '$key'."
+            }
+        }
+
+        formatIBStyle {
+            if {$value ni {"bounce" "pulse" "wave"}} {
+                error "zesty(error): value '$value' should be\
+                    'bounce', 'pulse', or 'wave' for\
+                    this key '$key'."
+            }
+        }
+
+        formatVertical {
+            if {$value ni {"top" "bottom" "middle"}} {
+                error "zesty(error): value '$value' should be\
+                    'top', 'bottom', or 'middle' for\
+                    this key '$key'."
+            }
+        }
+
+        formatTitleAnchor {
+            if {$value ni $titleAnchor} {
+                set keyType [format {%s or %s.} \
+                    [join [lrange $titleAnchor 0 end-1] ", "] \
+                    [lindex $titleAnchor end] \
+                ]
+                error "zesty(error): '$value' must be one of: $keyType\
+                    for this key '$key'."
+            }
+        }
+
+        formatTypeTable {
+            set keys [dict keys $tablestyles]
+            if {$value ni $keys} {
+                set keyType [format {%s or %s.} \
+                    [join [lrange $keys 0 end-1] ", "] \
+                    [lindex $keys end] \
+                ]
+                error "zesty(error): '$value' must be one of: $keyType\
+                    for this key '$key'."
+            }
+        }
+
+        formatTypeBox {
+            set keys [dict keys $boxstyles]
+            if {$value ni $keys} {
+                set keyType [format {%s or %s.} \
+                    [join [lrange $keys 0 end-1] ", "] \
+                    [lindex $keys end] \
+                ]
+                error "zesty(error): '$value' must be one of: $keyType\
+                    for this key '$key'."
+            }
+        }
+        formatMVL -
+        formatPad {
+            zesty::isPositiveIntegerValue $key $value
+        }
+
+        formatIBSpeed {
+            if {$value == 0} {
+                error "zesty(error): '$key' should not be equal to '0'"
+            }
+        }
+
+        formatColums {
+            foreach col $value {
+                if {([zesty::typeOf $col] ne "num") || ($col == 0)} {
+                    error "zesty(error): Column widths must be integers or\
+                        width equal to -1 for column width auto."
+                }
+            }
+        }
+
+        formatAlignements {
+            foreach align $value {
+                if {$align ni {"left" "right" "center"}} {
+                    error "zesty(error): Align column table must be one of\
+                        : left, right, center"
+                }
+            }
+        }
+
+        formatStyles {
+            foreach style $value {
+                zesty::validateKeyValuePairs "style" $style
+            }
+        }
+
+        formatSizeBox {
+            if {[llength $value] != 2} {
+                error "zesty(error): '$key' must be a list of two\
+                    integers {width height}"
+            }
+
+            lassign $value width height
+            zesty::isPositiveIntegerValue $key $width
+            zesty::isPositiveIntegerValue $key $height
+
+        }
+
+        formatSFreq -
+        formatMCWidth {
+            zesty::isPositiveIntegerValue $key $value 1
+        }
+
+        formatMBWidth {
+            zesty::isPositiveIntegerValue $key $value 5
+        }
+
+        formatLChar {
+            if {[zesty::strLength $value] != 1} {
+                error "zesty(error): This 'key' should be one character."
+            }
+        }
+
+        formatVKVP {
+            zesty::validateKeyValuePairs $key $value
+        }
     }
 }
