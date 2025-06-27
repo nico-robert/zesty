@@ -32,7 +32,7 @@ proc zesty::jsonDecode {args} {
         boolean   -validvalue formatStyle  -type any|none  -default {fg 5 italic 1}
         lineNum   -validvalue formatStyle  -type any|none  -default {fg 254 reverse 1}
     }
-    zesty::def options "-showLinesNumber"  -validvalue {} -type bool  -default "true"
+    zesty::def options "-showLinesNumber"  -validvalue formatVBool -type any  -default "true"
 
     # Merge options and args
     set options [zesty::merge $options $args]

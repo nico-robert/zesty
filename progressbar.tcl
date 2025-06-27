@@ -65,11 +65,11 @@ oo::class create zesty::Bar {
 
         # Default options
         zesty::def _options "-headers" -validvalue formatVKVP  -type struct -with {
-            show    -validvalue {}           -type bool      -default "false"
+            show    -validvalue formatVBool  -type any       -default "false"
             set     -validvalue formatHSets  -type any|none  -default ""
         }
         zesty::def _options "-lineHSeparator" -validvalue formatVKVP -type struct -with {
-            show    -validvalue {}           -type bool      -default "false"
+            show    -validvalue formatVBool  -type any       -default "false"
             style   -validvalue formatStyle  -type any|none  -default ""
             char    -validvalue formatLChar  -type any       -default "─"
         }

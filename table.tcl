@@ -59,26 +59,26 @@ oo::class create zesty::Table {
             style      -validvalue formatStyle      -type any|none   -default ""
         }
         zesty::def _options "-padding"  -validvalue formatPad   -type num      -default 1
-        zesty::def _options "-showEdge" -validvalue {}          -type bool  -default "true"
+        zesty::def _options "-showEdge" -validvalue formatVBool -type any      -default "true"
         zesty::def _options "-lines"    -validvalue formatVKVP  -type struct -with {
-            show  -validvalue {}           -type bool      -default "true"
+            show  -validvalue formatVBool  -type any       -default "true"
             style -validvalue formatStyle  -type any|none  -default ""
         }
         zesty::def _options "-header"    -validvalue formatVKVP  -type struct -with {
-            show  -validvalue {}           -type bool      -default "true"
+            show  -validvalue formatVBool  -type any     -default "true"
             style -validvalue formatStyle  -type any|none  -default ""
         }
         zesty::def _options "-footer"    -validvalue formatVKVP  -type struct -with {
-            show  -validvalue {}           -type bool      -default "true"
+            show  -validvalue formatVBool  -type any       -default "true"
             style -validvalue formatStyle  -type any|none  -default ""
         }
-        zesty::def _options "-keyPgup"          -validvalue {}        -type str|num  -default "p"
-        zesty::def _options "-keyPgdn"          -validvalue {}        -type str|num  -default "f"
-        zesty::def _options "-keyQuit"          -validvalue {}        -type str|num  -default "q"
-        zesty::def _options "-maxVisibleLines"  -validvalue formatMVL -type num      -default 0
-        zesty::def _options "-autoScroll"       -validvalue {}        -type bool     -default "false"
-        zesty::def _options "-pageScroll"       -validvalue {}        -type bool     -default "false"
-        zesty::def _options "-continuousScroll" -validvalue {}        -type bool     -default "false"
+        zesty::def _options "-keyPgup"          -validvalue {}          -type str|num  -default "p"
+        zesty::def _options "-keyPgdn"          -validvalue {}          -type str|num  -default "f"
+        zesty::def _options "-keyQuit"          -validvalue {}          -type str|num  -default "q"
+        zesty::def _options "-maxVisibleLines"  -validvalue formatMVL   -type num      -default 0
+        zesty::def _options "-autoScroll"       -validvalue formatVBool -type any      -default "false"
+        zesty::def _options "-pageScroll"       -validvalue formatVBool -type any      -default "false"
+        zesty::def _options "-continuousScroll" -validvalue formatVBool -type any      -default "false"
 
         # Merge options and args
         set _options [zesty::merge $_options $args]
@@ -91,7 +91,7 @@ oo::class create zesty::Table {
         zesty::def _column_configs "-width"    -validvalue {}              -type num       -default 0
         zesty::def _column_configs "-minWidth" -validvalue {}              -type num       -default 0
         zesty::def _column_configs "-maxWidth" -validvalue {}              -type num       -default 0
-        zesty::def _column_configs "-noWrap"   -validvalue {}              -type bool      -default "false"
+        zesty::def _column_configs "-noWrap"   -validvalue formatVBool     -type any       -default "false"
 
     }
 

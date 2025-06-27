@@ -32,7 +32,7 @@ proc zesty::box {args} {
         align  -validvalue formatAlign  -type str        -default "left"
         style  -validvalue formatStyle  -type any|none   -default ""
         table  -validvalue formatVKVP   -type struct     -with {
-            enabled     -validvalue {}  -type bool       -default "false"
+            enabled     -validvalue formatVBool        -type any       -default "false"
             columns     -validvalue formatColums       -type any|none   -default ""
             alignments  -validvalue formatAlignements  -type any|none   -default ""
             separator   -validvalue {}                 -type str|none   -default " "
@@ -43,7 +43,7 @@ proc zesty::box {args} {
         type       -validvalue formatTypeBox  -type str        -default "rounded"
         style      -validvalue formatStyle    -type any|none   -default ""
         size       -validvalue formatSizeBox  -type any|none   -default ""
-        fullScreen -validvalue {}             -type bool       -default "false"
+        fullScreen -validvalue formatVBool    -type any       -default "false"
     }
     zesty::def options "-formatCmdBoxMsgtruncated"  -validvalue {}  -type cmd|none  -default ""
 
