@@ -296,24 +296,19 @@ proc test_error_handling {} {
     zesty::echo "\n=== Error Handling Test ==="
     
     set bar [zesty::Bar new]
-    
-    # Test various error conditions
-    set tests {
-        {catch {$bar update "nonexistent_task" -completed 50} msg} "Invalid task ID"
-        {catch {$bar configureColumn 999 -width 10} msg} "Invalid column number"
-        {catch {$bar addTask -total -5} msg} "Invalid total value"
-        {catch {zesty::Bar new -minBarWidth 2} msg} "Invalid minBarWidth"
-        {catch {$bar configureColumn 0 -align "invalid"} msg} "Invalid alignment"
-    }
-    
-    foreach {test description} $tests {
-        if {[eval $test]} {
-            zesty::echo "✓ Caught error for: $description"
-        } else {
-            zesty::echo "✗ Failed to catch error for: $description"
-        }
-    }
-    
+
+    catch {$bar update "nonexistent_task" -completed 50} msg1
+    catch {$bar configureColumn 999 -width 10} msg2
+    catch {$bar addTask -total -5} msg3
+    catch {zesty::Bar new -minBarWidth 2} msg4
+    catch {$bar configureColumn 0 -align "invalid"} msg5
+
+    zesty::echo $msg1
+    zesty::echo $msg2
+    zesty::echo $msg3
+    zesty::echo $msg4
+    zesty::echo $msg5
+
     zesty::echo "Error handling test completed"
 }
 

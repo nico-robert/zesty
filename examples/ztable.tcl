@@ -37,11 +37,11 @@ proc test_styled_table {} {
     
     # Create table with custom styling
     set table [zesty::Table new \
-        -title {name "Sales Report Q4 2024" justify "center" style {bold 1 fg "blue"}} \
+        -title   {name "Sales Report Q4 2024" justify "center" style {bold 1 fg "blue"}} \
         -caption {name "Generated on 2025-01-01" justify "right" style {italic 1 fg "gray"}} \
-        -box {type "double" style {fg "green"}} \
-        -header {show 1 style {bold 1 bg "yellow" fg "black"}} \
-        -lines {show 1 style {fg "cyan"}} \
+        -box     {type "double" style {fg "green"}} \
+        -header  {show "true" style {bold 1 bg "yellow" fg "black"}} \
+        -lines   {show "true" style {fg "cyan"}} \
         -padding 2 \
     ]
     
@@ -75,7 +75,7 @@ proc test_text_wrapping {} {
     ]
     
     # Different column width configurations
-    $table addColumn -name "Code" -width 8 -noWrap 1
+    $table addColumn -name "Code" -width 8 -noWrap "true"
     $table addColumn -name "Description" -maxWidth 30 -justify "left"
     $table addColumn -name "Features" -width 25
     $table addColumn -name "Notes" -minWidth 15 -maxWidth 20
@@ -109,7 +109,7 @@ proc test_vertical_alignment {} {
     ]
     
     # Columns with different vertical alignments
-    $table addColumn -name "Top Aligned" -vertical "top" -width 15
+    $table addColumn -name "Top Aligned"    -vertical "top"    -width 15
     $table addColumn -name "Middle Aligned" -vertical "middle" -width 15  
     $table addColumn -name "Bottom Aligned" -vertical "bottom" -width 15
     
@@ -154,17 +154,17 @@ proc test_scrolling_table {} {
     set table [zesty::Table new \
         -title {name "Large Dataset - Employee Directory" justify "center"} \
         -maxVisibleLines 20 \
-        -pageScroll 1 \
+        -pageScroll "true" \
         -keyPgup "p" \
         -keyPgdn "n" \
         -keyQuit "q" \
     ]
     
-    $table addColumn -name "EmpID" -width 8
-    $table addColumn -name "Name" -width 20
-    $table addColumn -name "Department" -width 15
-    $table addColumn -name "Position" -width 18
-    $table addColumn -name "Salary" -width 12 -justify "right"
+    $table addColumn  -name "EmpID"       -width 8
+    $table addColumn  -name "Name"        -width 20
+    $table addColumn  -name "Department"  -width 15
+    $table addColumn  -name "Position"    -width 18
+    $table addColumn  -name "Salary"      -width 12  -justify "right"
     
     # Generate many rows of sample data
     set departments {"Engineering" "Sales" "Marketing" "HR" "Finance" "Operations"}
@@ -196,12 +196,12 @@ proc test_responsive_width {} {
     ]
     
     # Add many columns to test width adaptation
-    $table addColumn -name "Col1" -minWidth 8
-    $table addColumn -name "Column 2" -minWidth 10  
-    $table addColumn -name "Very Long Column Header 3" -minWidth 12
-    $table addColumn -name "Col4" -minWidth 8
-    $table addColumn -name "Column 5 Data" -minWidth 15
-    $table addColumn -name "Last Column" -minWidth 10
+    $table addColumn  -name "Col1"                       -minWidth 8
+    $table addColumn  -name "Column 2"                   -minWidth 10
+    $table addColumn  -name "Very Long Column Header 3"  -minWidth 12
+    $table addColumn  -name "Col4"                       -minWidth 8
+    $table addColumn  -name "Column 5 Data"              -minWidth 15
+    $table addColumn  -name "Last Column"                -minWidth 10
     
     # Add sample data
     $table addRow "A1" "B1" "C1 with long content" "D1" "E1 data" "F1"
@@ -218,9 +218,9 @@ proc test_borderless_table {} {
     puts "\n=== BORDERLESS TABLE DEMO ==="
     
     set table [zesty::Table new \
-        -showEdge 0 \
-        -lines {show 0} \
-        -header {show 1 style {bold 1 underline 1}} \
+        -showEdge "false" \
+        -lines {show "false"} \
+        -header {show "true" style {bold 1 underline 1}} \
         -padding 3 \
     ]
     
@@ -241,7 +241,7 @@ proc test_continuous_scroll {} {
     
     set table [zesty::Table new \
         -title {name "Continuous Scroll Mode" justify "center"} \
-        -continuousScroll 1 \
+        -continuousScroll "true" \
         -keyPgup "u" \
         -keyPgdn "d" \
         -keyQuit "q" \
@@ -279,10 +279,10 @@ proc test_table {} {
 
     # Add columns
     $table addColumn -name "Product" -justify "left" -minWidth 20 -vertical "middle" -style {fg yellow}
-    $table addColumn -name "<s fg=yellow>Description</s>" -justify "left" -vertical "top" -noWrap 1
-    $table addColumn -name "Price" -justify "right" -vertical "middle" -noWrap 1
+    $table addColumn -name "<s fg=yellow>Description</s>" -justify "left" -vertical "top" -noWrap "true"
+    $table addColumn -name "Price" -justify "right" -vertical "middle" -noWrap "true"
     $table addColumn -name "Rating" -justify "center" -vertical "middle"
-    $table addColumn -name "Status" -justify "center" -vertical "middle" -minWidth 10 -noWrap 1
+    $table addColumn -name "Status" -justify "center" -vertical "middle" -minWidth 10 -noWrap "true"
 
     # Add rows
     $table addRow "DELL 4K Monitor" \
@@ -331,10 +331,10 @@ proc test_nowrap_truncation {} {
     ]
     
     # Columns with different noWrap settings
-    $table addColumn -name "Normal Wrap" -width 15 -noWrap 0
-    $table addColumn -name "Truncated" -width 15 -noWrap 1
-    $table addColumn -name "Short Truncated" -width 8 -noWrap 1
-    $table addColumn -name "Very Short" -width 5 -noWrap 1
+    $table addColumn  -name "Normal Wrap"      -width 15  -noWrap "false"
+    $table addColumn  -name "Truncated"        -width 15  -noWrap "true"
+    $table addColumn  -name "Short Truncated"  -width 8   -noWrap "true"
+    $table addColumn  -name "Very Short"       -width 5   -noWrap "true"
     
     # Add rows with progressively longer text to show truncation behavior
     $table addRow \
@@ -376,16 +376,16 @@ proc test_mixed_nowrap {} {
     set table [zesty::Table new \
         -title {name "Product Catalog - Mixed Text Handling" justify "center"} \
         -box {type "rounded"} \
-        -header {show 1 style {bold 1 bg "blue" fg "white"}} \
+        -header {show "true" style {bold 1 bg "blue" fg "white"}} \
     ]
     
     # Mix of wrapping and truncation for different data types
-    $table addColumn -name "SKU" -width 10 -noWrap 1 -justify "center"
-    $table addColumn -name "Product Name" -width 20 -noWrap 0 -justify "left"
-    $table addColumn -name "Category" -width 12 -noWrap 1 -justify "center"
-    $table addColumn -name "Price" -width 8 -noWrap 1 -justify "right"
-    $table addColumn -name "Description" -width 25 -noWrap 0 -justify "left"
-    $table addColumn -name "Status" -width 10 -noWrap 1 -justify "center"
+    $table addColumn  -name "SKU"           -width 10  -noWrap "true"   -justify "center"
+    $table addColumn  -name "Product Name"  -width 20  -noWrap "false"  -justify "left"
+    $table addColumn  -name "Category"      -width 12  -noWrap "true"   -justify "center"
+    $table addColumn  -name "Price"         -width 8   -noWrap "true"   -justify "right"
+    $table addColumn  -name "Description"   -width 25  -noWrap "false"  -justify "left"
+    $table addColumn  -name "Status"        -width 10  -noWrap "true"   -justify "center"
     
     # Add sample product data
     $table addRow \

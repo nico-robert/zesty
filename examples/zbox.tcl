@@ -324,7 +324,7 @@ zesty::echo "──────────────────"
 set bb [zesty::box \
     -title {name "Full Screen"} \
     -content {text "Full screen content"} \
-    -box {fullScreen 1}
+    -box {fullScreen "true"}
 ]
 zesty::echo $bb
 
@@ -434,7 +434,7 @@ zesty::echo [zesty::box \
     -content [list \
         text $data \
         table {
-            enabled 1
+            enabled "true"
             columns {20 20 40}
             alignments {"left" "left" "left"}
             separator ""
