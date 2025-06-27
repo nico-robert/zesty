@@ -1238,11 +1238,6 @@ proc zesty::typeOf {value} {
         return num
     }
 
-    if {[string equal -nocase "true" $value] ||
-        [string equal -nocase "false" $value]} {
-        return bool
-    }
-
     if {[info commands $value] ne ""} {
         return cmd
     }
