@@ -156,5 +156,12 @@ proc zesty::validValue {type key validvalue value} {
         formatVKVP {
             zesty::validateKeyValuePairs $key $value
         }
+
+        formatVBool {
+            if {![string is boolean -strict $value]} {
+                error "zesty(error): '$key' must be a boolean value."
+            }
+        }
+
     }
 }
