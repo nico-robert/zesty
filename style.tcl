@@ -12,10 +12,14 @@ proc zesty::initStyles {} {
     # Also handles Windows compatibility for extended colors.
     #
     # Populates module variables :
-    # - colors_dict:       normalized name -> color code mapping
-    # - color_names_dict:  normalized name -> original name mapping
-    # - hex_dict:          hex value -> color code mapping
-    # - termstyles:        terminal style codes dictionary
+    # - colors_dict:       normalized name -> color code mapping.
+    # - color_names_dict:  normalized name -> original name mapping.
+    # - hex_dict:          hex value -> color code mapping.
+    # - termstyles:        terminal style codes dictionary.
+    # - boxstyles:         box style codes dictionary.
+    # - tablestyles:       table style codes dictionary.
+    # - spinnerstyles:     spinner style codes dictionary.
+    # - titleAnchor:       title anchor list.
     #
     # Returns: nothing
 
@@ -24,6 +28,10 @@ proc zesty::initStyles {} {
     variable hex_dict 
     variable termstyles
     variable tcolor
+    variable boxstyles
+    variable titleAnchor
+    variable tablestyles
+    variable spinnerstyles
 
     # Check if zesty::tcolor exists
     if {![info exists tcolor]} {
@@ -74,6 +82,44 @@ proc zesty::initStyles {} {
         # Store also with # for search
         dict set hex_dict [string tolower $hex_value] $code
     }
+
+    # Box styles dictionary
+    set boxstyles {
+        single  {┌ ┐ └ ┘ │ ─}
+        double  {╔ ╗ ╚ ╝ ║ ═}
+        rounded {╭ ╮ ╰ ╯ │ ─}
+        thick   {┏ ┓ ┗ ┛ ┃ ━}
+        ascii   {+ + + + | -}
+    }
+
+    # Title anchors
+    set titleAnchor {
+        ne nc nw
+        sw sc se
+        en ec es
+        wn wc ws
+    }
+
+    # Table styles
+    set tablestyles {
+        single  {┌ ┐ └ ┘ │ ─ ┼ ┬ ┴ ├ ┤}
+        double  {╔ ╗ ╚ ╝ ║ ═ ╬ ╦ ╩ ╠ ╣}
+        rounded {╭ ╮ ╰ ╯ │ ─ ┼ ┬ ┴ ├ ┤}
+        thick   {┏ ┓ ┗ ┛ ┃ ━ ┃ ┳ ┻ ┣ ┫}
+        ascii   {+ + + + | - + + + + +}
+    }
+
+    # Spinner styles
+    set spinnerstyles {
+        dots   {⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏}
+        line   {| / - \\}
+        circle {◐ ◓ ◑ ◒}
+        emoji  {😂 😭 😌}
+        arrows {← ↖ ↑ ↗ → ↘ ↓ ↙}
+        bars   {▁ ▃ ▄ ▅ ▆ ▇ █ ▇ ▆ ▅ ▄ ▃}
+        moon   {🌑 🌒 🌓 🌔 🌕 🌖 🌗 🌘}
+    }
+
 }
 
 proc zesty::getColorName {color} {
