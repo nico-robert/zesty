@@ -24,6 +24,7 @@ package ifneeded zesty 0.1 [list apply {dir {
     source -encoding utf-8 [file join $dir colors.tcl]
     source -encoding utf-8 [file join $dir utils.tcl]
     source -encoding utf-8 [file join $dir style.tcl]
+    source -encoding utf-8 [file join $dir format.tcl]
     source -encoding utf-8 [file join $dir box.tcl]
     source -encoding utf-8 [file join $dir json.tcl]
     source -encoding utf-8 [file join $dir table.tcl]
