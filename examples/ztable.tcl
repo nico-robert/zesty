@@ -8,7 +8,7 @@ lappend auto_path [file dirname [file dirname [file normalize [info script]]]]
 package require zesty
 
 proc test_basic_table {} {
-    puts "\n=== BASIC TABLE DEMO ==="
+    zesty::echo "\n=== BASIC TABLE DEMO ==="
     
     # Create a simple table with default settings
     set table [zesty::Table new]
@@ -33,7 +33,7 @@ proc test_basic_table {} {
 }
 
 proc test_styled_table {} {
-    puts "\n=== STYLED TABLE DEMO ==="
+    zesty::echo "\n=== STYLED TABLE DEMO ==="
     
     # Create table with custom styling
     set table [zesty::Table new \
@@ -66,7 +66,7 @@ proc test_styled_table {} {
 }
 
 proc test_text_wrapping {} {
-    puts "\n=== TEXT WRAPPING DEMO ==="
+    zesty::echo "\n=== TEXT WRAPPING DEMO ==="
     
     # Create table with different wrapping behaviors
     set table [zesty::Table new \
@@ -101,7 +101,7 @@ proc test_text_wrapping {} {
 }
 
 proc test_vertical_alignment {} {
-    puts "\n=== VERTICAL ALIGNMENT DEMO ==="
+    zesty::echo "\n=== VERTICAL ALIGNMENT DEMO ==="
     
     set table [zesty::Table new \
         -title {name "Multi-line Content Alignment" justify "center"} \
@@ -127,12 +127,12 @@ proc test_vertical_alignment {} {
 }
 
 proc test_box_styles {} {
-    puts "\n=== BOX STYLES DEMO ==="
+    zesty::echo "\n=== BOX STYLES DEMO ==="
     
     set styles {"single" "double" "rounded" "thick" "ascii"}
     
     foreach style $styles {
-        puts "\nBox style: $style"
+        zesty::echo "\nBox style: $style"
         set table [zesty::Table new -box [list type $style]]
         
         $table addColumn -name "Column 1" -width 12
@@ -148,7 +148,7 @@ proc test_box_styles {} {
 }
 
 proc test_scrolling_table {} {
-    puts "\n=== SCROLLING TABLE DEMO ==="
+    zesty::echo "\n=== SCROLLING TABLE DEMO ==="
     
     # Create a large table that will require scrolling
     set table [zesty::Table new \
@@ -180,15 +180,15 @@ proc test_scrolling_table {} {
         $table addRow $empId $name $dept $pos $salary
     }
     
-    puts "Note: This table will show pagination controls."
-    puts "Use 'n' for next page, 'p' for previous, 'q' to quit."
+    zesty::echo "Note: This table will show pagination controls."
+    zesty::echo "Use 'n' for next page, 'p' for previous, 'q' to quit."
     
     $table display
     $table destroy
 }
 
 proc test_responsive_width {} {
-    puts "\n=== RESPONSIVE WIDTH DEMO ==="
+    zesty::echo "\n=== RESPONSIVE WIDTH DEMO ==="
     
     # This demo shows how tables adapt to terminal width
     set table [zesty::Table new \
@@ -208,14 +208,14 @@ proc test_responsive_width {} {
     $table addRow "A2" "B2 extended" "C2" "D2 value" "E2" "F2 content"
     $table addRow "A3 long" "B3" "C3" "D3" "E3 extended data" "F3"
     
-    puts "This table will automatically adjust column widths based on your terminal size."
+    zesty::echo "This table will automatically adjust column widths based on your terminal size."
     
     $table display
     $table destroy
 }
 
 proc test_borderless_table {} {
-    puts "\n=== BORDERLESS TABLE DEMO ==="
+    zesty::echo "\n=== BORDERLESS TABLE DEMO ==="
     
     set table [zesty::Table new \
         -showEdge "false" \
@@ -237,7 +237,7 @@ proc test_borderless_table {} {
 }
 
 proc test_continuous_scroll {} {
-    puts "\n=== CONTINUOUS SCROLL DEMO ==="
+    zesty::echo "\n=== CONTINUOUS SCROLL DEMO ==="
     
     set table [zesty::Table new \
         -title {name "Continuous Scroll Mode" justify "center"} \
@@ -258,8 +258,8 @@ proc test_continuous_scroll {} {
             [expr {$i % 2 ? "Active" : "Inactive"}]
     }
     
-    puts "This will demonstrate line-by-line scrolling."
-    puts "Use 'u' for up, 'd' for down, 'q' to quit."
+    zesty::echo "This will demonstrate line-by-line scrolling."
+    zesty::echo "Use 'u' for up, 'd' for down, 'q' to quit."
     
     $table display
     $table destroy
@@ -267,7 +267,7 @@ proc test_continuous_scroll {} {
 
 proc test_table {} {
 
-    puts "\n=== TABLE ==="
+    zesty::echo "\n=== TABLE ==="
 
     set table [zesty::Table new \
         -title {name "Assessment of <s fg=blue>Products</s>" style {fg red}} \
@@ -323,7 +323,7 @@ proc test_table {} {
 }
 
 proc test_nowrap_truncation {} {
-    puts "\n=== TEXT TRUNCATION (noWrap) DEMO ==="
+    zesty::echo "\n=== TEXT TRUNCATION (noWrap) DEMO ==="
     
     set table [zesty::Table new \
         -title {name "Text Truncation Comparison - noWrap vs Normal" justify "center"} \
@@ -361,17 +361,17 @@ proc test_nowrap_truncation {} {
         "Super extremely long content that goes on and on to show maximum truncation behavior" \
         "Super extremely long content that goes on and on to show maximum truncation behavior"
     
-    puts "This demo shows the difference between:"
-    puts "- Column 1: Normal text wrapping (noWrap = 0)"
-    puts "- Columns 2-4: Text truncation with ellipsis (noWrap = 1)"
-    puts "- Notice how truncated columns show '...' when text is too long"
+    zesty::echo "This demo shows the difference between:"
+    zesty::echo "- Column 1: Normal text wrapping (noWrap = 0)"
+    zesty::echo "- Columns 2-4: Text truncation with ellipsis (noWrap = 1)"
+    zesty::echo "- Notice how truncated columns show '...' when text is too long"
     
     $table display
     $table destroy
 }
 
 proc test_mixed_nowrap {} {
-    puts "\n=== MIXED noWrap SETTINGS DEMO ==="
+    zesty::echo "\n=== MIXED noWrap SETTINGS DEMO ==="
     
     set table [zesty::Table new \
         -title {name "Product Catalog - Mixed Text Handling" justify "center"} \
@@ -420,9 +420,9 @@ proc test_mixed_nowrap {} {
         "32-inch 4K UHD monitor with IPS panel, HDR support, and multiple connectivity options" \
         "Available"
     
-    puts "This demo shows strategic use of noWrap:"
-    puts "- SKU, Category, Price, Status: truncated (noWrap = 1) - fixed-width data"
-    puts "- Product Name, Description: wrapped (noWrap = 0) - variable content"
+    zesty::echo "This demo shows strategic use of noWrap:"
+    zesty::echo "- SKU, Category, Price, Status: truncated (noWrap = 1) - fixed-width data"
+    zesty::echo "- Product Name, Description: wrapped (noWrap = 0) - variable content"
     
     $table display
     $table destroy
@@ -472,7 +472,6 @@ proc interactive_menu {} {
         6 { zesty::resetTerminal ; test_scrolling_table }
         7 { zesty::resetTerminal ; test_responsive_width }
         8 { zesty::resetTerminal ; test_borderless_table }
-        9 { zesty::resetTerminal ; test_continuous_scroll }
         9 { zesty::resetTerminal ; test_continuous_scroll }
         10 { zesty::resetTerminal ; test_table }
         11 { zesty::resetTerminal ; test_nowrap_truncation }
