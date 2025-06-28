@@ -377,7 +377,8 @@ proc zesty::findLastPattern {contentLines typeStyle} {
     # Search backwards from the end
     for {set i [expr {$totalLines - 1}]} {$i >= 0} {incr i -1} {
         set line [lindex $contentLines $i]
-        if {[regexp $pattern $line]} {
+        set visible_line [zesty::extractVisibleText $line]
+        if {[regexp $pattern $visible_line]} {
             return $i
         }
     }
@@ -409,7 +410,8 @@ proc zesty::findFirstPattern {contentLines typeStyle} {
     # Search
     for {set i 0} {$i < $totalLines} {incr i} {
         set line [lindex $contentLines $i]
-        if {[regexp $pattern $line] && ($i > 0)} {
+        set visible_line [zesty::extractVisibleText $line]
+        if {[regexp $pattern $visible_line] && ($i > 0)} {
             return $i
         }
     }
