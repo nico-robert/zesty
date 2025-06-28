@@ -104,9 +104,9 @@ proc zesty::validValue {type key validvalue value} {
 
         formatColums {
             foreach col $value {
-                if {([zesty::typeOf $col] ne "num") || ($col == 0)} {
-                    error "zesty(error): Column widths must be integers or\
-                        width equal to -1 for column width auto."
+                if {([zesty::typeOf $col] ne "num") || (($col != -1) && ($col < 1))} {
+                    error "zesty(error): Column widths must be positive integers or\
+                        -1 for auto width."
                 }
             }
         }
