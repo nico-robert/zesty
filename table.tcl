@@ -402,7 +402,7 @@ oo::class create zesty::Table {
                     break
                 }
                 
-                set lines [my WrapText $col $colWidth 0]
+                set lines [zesty::wrapText $col $colWidth 0]
                 set lineCount [llength $lines]
                 if {$lineCount > $headerHeight} {
                     set headerHeight $lineCount
@@ -426,7 +426,7 @@ oo::class create zesty::Table {
         if {$caption_name ne ""} {
             # Estimate number of lines for caption
             set captionWidth [expr {$tableWidth - 2}]
-            set wrappedCaption [my WrapText $caption_name $captionWidth 0]
+            set wrappedCaption [zesty::wrapText $caption_name $captionWidth 0]
             incr footerRows [llength $wrappedCaption]
         }
         
@@ -472,7 +472,8 @@ oo::class create zesty::Table {
             zesty::echo [join $footerContent "\n"]
             
             # Add progress indicator
-            zesty::echo "-- Lines [expr {$dataStart + 1}]-[expr {$dataStart + $contentRows}] of $dataLines (Press Enter to continue, q to quit) --"
+            zesty::echo "-- Lines [expr {$dataStart + 1}]-[expr {$dataStart + $contentRows}]\
+                        out of $dataLines (Press Enter to continue, q to quit) --"
             
             # Wait for user input
             set input [string tolower [string trim [gets stdin]]]
@@ -517,130 +518,6 @@ oo::class create zesty::Table {
         lappend _rows $row
 
         return {}
-    }
-
-    method WrapText {text maxWidth {noWrap 0}} {
-        # Wraps text to fit within specified width with ellipsis support.
-        #
-        # text - Text content to wrap
-        # maxWidth - Maximum width in characters
-        # noWrap - If true, truncate with ellipsis instead of wrapping
-        #
-        # Returns list of wrapped text lines. When noWrap is enabled,
-        # truncates text and adds ellipsis if it exceeds maxWidth.
-
-        # If text is already shorter than maximum width
-        if {[zesty::strLength [zesty::extractVisibleText $text]] <= $maxWidth} {
-            return [list $text]
-        }
-
-        # If noWrap is enabled, truncate with ellipsis instead of wrapping
-        if {$noWrap} {
-            # Reserve 3 characters for ellipsis "..."
-            set ellipsisWidth 3
-            set padding [dict get $_options padding]
-            set truncateWidth [expr {($maxWidth - $ellipsisWidth) + ($padding * 2)}]
-            
-            # If width is too small to even display ellipsis
-            if {$truncateWidth <= 0} {
-                # Use only as many dots as possible
-                set points [string repeat "." [expr {$maxWidth > 0 ? $maxWidth : 1}]]
-                return [list $points]
-            }
-
-            # Add ellipsis
-            set truncated [zesty::smartTruncateStyledText $text $truncateWidth 1]
-            return [list $truncated]
-        }
-        
-        # Rest of code for normal wrapping when noWrap is disabled
-        set lines {}
-        set currentLine ""
-        
-        set visible_text [zesty::extractVisibleText $text]
-
-        # Split text into words
-        if {[string first " " $visible_text] != -1} {
-            set words [zesty::splitWithProtectedTags $text]
-
-            foreach word $words {
-                # Test if adding word exceeds max width
-                set testLine "$currentLine $word"
-                set testLine [string trimleft $testLine]
-                set visibleline [zesty::extractVisibleText $testLine]
-                
-                if {
-                    ([zesty::strLength $visibleline] <= $maxWidth)  || 
-                    ($currentLine eq "")
-                } {
-                    set currentLine $testLine
-                } else {
-                    lappend lines $currentLine
-                    set currentLine $word
-                }
-            }
-            
-            if {$currentLine ne ""} {
-                lappend lines $currentLine
-            }
-
-        } else {
-            # No spaces in text, split character by character
-            set currentWidth 0
-            set currentLine ""
-            set result [zesty::splitTagsToChars $text]
-            
-            foreach char [zesty::splitWithProtectedTags $result ""] {
-                set visiblechar [zesty::extractVisibleText $char]
-                set charWidth [zesty::strLength $visiblechar]
-                
-                if {($currentWidth + $charWidth) <= $maxWidth} {
-                    append currentLine $char
-                    incr currentWidth $charWidth
-                } else {
-                    lappend lines $currentLine
-                    set currentLine $char
-                    set currentWidth $charWidth
-                }
-            }
-            
-            if {$currentLine ne ""} {
-                lappend lines $currentLine
-            }
-        }
-        
-        # Handle lines still too long (individual words longer than maxWidth)
-        set wrappedLines {}
-        foreach line $lines {
-            if {[zesty::strLength [zesty::extractVisibleText $line]] <= $maxWidth} {
-                lappend wrappedLines $line
-            } else {
-                # Split line character by character
-                set currentWidth 0
-                set currentPart ""
-                set result [zesty::splitTagsToChars $line]
-
-                foreach char [zesty::splitWithProtectedTags $result ""] {
-                    set visiblechar [zesty::extractVisibleText $char]
-                    set charWidth [zesty::strLength $visiblechar]
-                    
-                    if {($currentWidth + $charWidth) <= $maxWidth} {
-                        append currentPart $char
-                        incr currentWidth $charWidth
-                    } else {
-                        lappend wrappedLines $currentPart
-                        set currentPart $char
-                        set currentWidth $charWidth
-                    }
-                }
-                
-                if {$currentPart ne ""} {
-                    lappend wrappedLines $currentPart
-                }
-            }
-        }
-        
-        return $wrappedLines
     }
 
     method CalculateTableColumnWidths {} {
@@ -710,41 +587,6 @@ oo::class create zesty::Table {
         }
         
         return $colWidths
-    }
-
-    method PadText {text width justify} {
-        # Pads text to specified width with alignment.
-        #
-        # text    - Text content to pad
-        # width   - Target width in characters
-        # justify - Alignment: "left", "right", or "center"
-        #
-        # Returns text padded with spaces to achieve specified width
-        # and alignment.
-
-        set displayWidth [zesty::strLength [zesty::extractVisibleText $text]]
-        set padLen [expr {$width - $displayWidth}]
-        
-        if {$padLen <= 0} {
-            return $text
-        }
-        
-        switch -exact -- $justify {
-            "left" {
-                return "$text[string repeat " " $padLen]"
-            }
-            "right" {
-                return "[string repeat " " $padLen]$text"
-            }
-            "center" {
-                set leftPad [expr {$padLen / 2}]
-                set rightPad [expr {$padLen - $leftPad}]
-                return "[string repeat " " $leftPad]$text[string repeat " " $rightPad]"
-            }
-            default {
-                return "$text[string repeat " " $padLen]"
-            }
-        }
     }
 
     method AlignCellContentVertical {lines cellHeight verticalAlign} {
@@ -980,7 +822,7 @@ oo::class create zesty::Table {
             }
 
             set title_justify [dict get $_options title justify]
-            set paddedTitle [my PadText $title [expr {$tableWidth - 2}] $title_justify]
+            set paddedTitle [zesty::alignText $title [expr {$tableWidth - 2}] $title_justify]
             set title_style [dict get $_options title style]
 
             set paddedTitle [zesty::parseStyleDictToXML $paddedTitle $title_style]
@@ -1038,22 +880,22 @@ oo::class create zesty::Table {
         set maxHeaderHeight 1
         set pad [dict get $_options padding]
         for {set i 0} {$i < $numCols} {incr i} {
-
-            set colWidth   [expr {[lindex $colWidths $i] - 2 * $pad}]
-            set nowrap     [dict get $_column_options $i noWrap]
+            set colWidth [lindex $colWidths $i]
+            set availableWidth [expr {$colWidth - 2 * $pad}]
             set headerText [dict get $_column_options $i name]
-            
-            # Apply same treatment as for cell content
-            # respecting noWrap option for headers too
-            set wrappedHeader [my WrapText $headerText $colWidth $nowrap]
+
+            if {$availableWidth <= 0} {
+                lappend headerLines [list ""]
+            } else {
+                set wrappedHeader [zesty::wrapText $headerText $availableWidth 1]
+                lappend headerLines $wrappedHeader
+            }
             
             # Update maximum header height
-            set headerHeight [llength $wrappedHeader]
+            set headerHeight [llength [lindex $headerLines end]]
             if {$headerHeight > $maxHeaderHeight} {
                 set maxHeaderHeight $headerHeight
             }
-            
-            lappend headerLines $wrappedHeader
         }
         
         # Header
@@ -1067,23 +909,21 @@ oo::class create zesty::Table {
                 }
                 
                 for {set colIdx 0} {$colIdx < $numCols} {incr colIdx} {
-                    
                     set colWidth [lindex $colWidths $colIdx]
                     set colContent ""
                     if {$lineIdx < [llength [lindex $headerLines $colIdx]]} {
                         set colContent [lindex $headerLines $colIdx $lineIdx]
                     }
                     
-                    if {$colContent eq ""} {
-                        set colContent [string repeat " " $colWidth]
-                    }
-
                     set justify [dict get $_column_options $colIdx justify]
-                    
-                    # Padding
                     set padding [string repeat " " $pad]
-                    set paddedContent "$padding$colContent$padding"
-                    set paddedContent [my PadText $paddedContent $colWidth $justify]
+                    
+                    if {$colContent eq ""} {
+                        set paddedContent [string repeat " " $colWidth]
+                    } else {
+                        set paddedContent "$padding$colContent$padding"
+                        set paddedContent [zesty::alignText $paddedContent $colWidth $justify]
+                    }
 
                     append headerLine [zesty::parseStyleDictToXML $paddedContent $header_style]
                     
@@ -1140,14 +980,14 @@ oo::class create zesty::Table {
                     set lines [split $content "\n"]
                     foreach line $lines {
                         # Wrap each line individually
-                        set wrapped [my WrapText $line $colWidth $nowrap]
+                        set wrapped [zesty::wrapText $line $colWidth $nowrap]
                         foreach wline $wrapped {
                             lappend wrappedContent $wline
                         }
                     }
                 } else {
                     # Wrap content normally
-                    set wrappedContent [my WrapText $content $colWidth $nowrap]
+                    set wrappedContent [zesty::wrapText $content $colWidth $nowrap]
                 }
                 
                 # Update line height
@@ -1200,7 +1040,7 @@ oo::class create zesty::Table {
                     # Padding
                     set padding [string repeat " " [dict get $_options padding]]
                     set paddedContent "$padding$colContent$padding"
-                    set paddedContent [my PadText $paddedContent $colWidth $justify]
+                    set paddedContent [zesty::alignText $paddedContent $colWidth $justify]
 
                     append rowLine [zesty::parseStyleDictToXML $paddedContent $col_style]
                     
@@ -1242,10 +1082,10 @@ oo::class create zesty::Table {
             
             # Apply wrapping to caption
             set maxCaptionWidth [expr {$tableWidth - 2}]
-            set wrappedCaption [my WrapText $caption_name $maxCaptionWidth 0]
+            set wrappedCaption [zesty::wrapText $caption_name $maxCaptionWidth 0]
             
             foreach line $wrappedCaption {
-                set paddedLine [my PadText $line $tableWidth [dict get $_options caption justify]]
+                set paddedLine [zesty::alignText $line $tableWidth [dict get $_options caption justify]]
                 append captionLine "$paddedLine\n"
             }
 

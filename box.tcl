@@ -135,13 +135,10 @@ proc zesty::box {args} {
         # Normal mode - line by line processing
         foreach line [split $content "\n"] {
             set line [zesty::parseStyleDictToXML $line $content_style]
-            
-            # Apply horizontal truncation if target width known
+
             if {$box_content_width > 0} {
-                set visible_length [zesty::strLength [zesty::extractVisibleText $line]]
-                if {$visible_length > $box_content_width} {
-                    set line [zesty::smartTruncateStyledText $line $box_content_width 1]
-                }
+                set wrapped_lines [zesty::wrapText $line $box_content_width 1]
+                set line [lindex $wrapped_lines 0]
             }
             
             set line_info [zesty::parseContentLine $line]
@@ -283,8 +280,8 @@ proc zesty::box {args} {
             set visible_length [dict get $line_info visible_length]
             
             if {$visible_length > $box_content_width} {
-                # Truncate line that exceeds
-                set truncated_line [zesty::smartTruncateStyledText $line $box_content_width 1]
+                set wrapped_lines [zesty::wrapText $line $box_content_width 1]
+                set truncated_line [lindex $wrapped_lines 0]
                 set new_visible_length [string length [zesty::extractVisibleText $truncated_line]]
                 set updated_line_info [dict create \
                     visible_length $new_visible_length \
@@ -488,9 +485,9 @@ proc zesty::buildBoxWithTitle {
                 if {$paddingX > 0} {
                     append result [string repeat " " $paddingX]
                 }
-                
-                set aligned_line [zesty::buildAlignedLine \
-                    $line_entry \
+                # Aligned content
+                set aligned_line [zesty::alignText \
+                    [dict get $line_entry original_line] \
                     $box_content_width \
                     $content_align
                 ]
@@ -580,8 +577,9 @@ proc zesty::buildContentLineWithVerticalTitle {
         }
         
         # Aligned content
-        set aligned_line [zesty::buildAlignedLine \
-            $line_info $box_content_width \
+        set aligned_line [zesty::alignText \
+            [dict get $line_info original_line] \
+            $box_content_width \
             $content_align
         ]
         append result $aligned_line
@@ -603,8 +601,9 @@ proc zesty::buildContentLineWithVerticalTitle {
         }
         
         # Aligned content
-        set aligned_line [zesty::buildAlignedLine \
-            $line_info $box_content_width \
+        set aligned_line [zesty::alignText \
+            [dict get $line_info original_line] \
+            $box_content_width \
             $content_align
         ]
         append result $aligned_line
@@ -663,8 +662,9 @@ proc zesty::buildBoxWithoutTitle {
             append result [string repeat " " $paddingX]
         }
         
-        set aligned_line [zesty::buildAlignedLine \
-            $line_info $box_content_width \
+        set aligned_line [zesty::alignText \
+            [dict get $line_info original_line] \
+            $box_content_width \
             $content_align
         ]
         append result $aligned_line
@@ -698,25 +698,25 @@ proc zesty::buildHorizontalBorderWithTitle {
 } {
     # Builds horizontal border with integrated title.
     #
-    # title - styled title text
-    # align - title alignment (w, e, c)
-    # title_length - visible length of title
-    # total_width - total border width
-    # left_char - left corner character
-    # right_char - right corner character
-    # horizontal - horizontal border character
-    # add_newline - whether to add newline at end
+    # title         - styled title text
+    # align         - title alignment (w, e, c)
+    # title_length  - visible length of title
+    # total_width   - total border width
+    # left_char     - left corner character
+    # right_char    - right corner character
+    # horizontal    - horizontal border character
+    # add_newline   - whether to add newline at end
     #
     # Returns formatted border line with title embedded.
     set result ""
     append result $left_char
-    
+
     # Check if title exceeds available width
     set available_width [expr {$total_width - 2}]  ;# -2 for spaces around title
     if {$title_length > $available_width} {
-        # Truncate title with intelligent truncation
         if {$available_width >= 4} {
-            set title [zesty::smartTruncateStyledText $title $available_width 1]
+            set wrapped_lines [zesty::wrapText $title $available_width 1]
+            set title [lindex $wrapped_lines 0]
             set title_length [string length [zesty::extractVisibleText $title]]
         } else {
             # If space too small, just dots
@@ -754,11 +754,12 @@ proc zesty::buildHorizontalBorderWithTitle {
 proc zesty::createVerticalTitle {title max_height} {
     # Creates vertical title by splitting into characters.
     #
-    # title - title text to make vertical
+    # title      - title text to make vertical
     # max_height - maximum height available for title
     #
     # Returns list of characters for vertical display, truncated
     # with ellipsis if necessary.
+    
     # Extract visible text (without formatting)
     set visible_text [zesty::extractVisibleText $title]
     set title_chars [split $visible_text ""]
@@ -767,8 +768,8 @@ proc zesty::createVerticalTitle {title max_height} {
     if {$title_height > $max_height} {
         # Truncate and add "..." if necessary
         if {$max_height >= 4} {
-            # Use intelligent truncation for styled titles
-            set truncated_title [zesty::smartTruncateStyledText $title [expr {$max_height - 3}] 1]
+            set truncated_lines [zesty::wrapText $title [expr {$max_height - 3}] 1]
+            set truncated_title [lindex $truncated_lines 0]
             set truncated_visible [zesty::extractVisibleText $truncated_title]
             set title_chars [split $truncated_visible ""]
         } else {
@@ -780,53 +781,16 @@ proc zesty::createVerticalTitle {title max_height} {
     return $title_chars
 }
 
-proc zesty::buildAlignedLine {line_info target_width align} {
-    # Builds line with specified alignment within target width.
-    #
-    # line_info - line information dictionary with visible_length
-    #             and original_line keys
-    # target_width - target width for alignment
-    # align - alignment type (left, right, center)
-    #
-    # Returns aligned line padded to target width.
-
-    # Get line information
-    set visible_length [dict get $line_info visible_length]
-    set original_line  [dict get $line_info original_line]
-    set spaces_needed  [expr {$target_width - $visible_length}]
-    
-    if {$spaces_needed <= 0} {
-        return $original_line
-    }
-    
-    switch $align {
-        "left" {
-            return "${original_line}[string repeat " " $spaces_needed]"
-        }
-        "right" {
-            return "[string repeat " " $spaces_needed]${original_line}"
-        }
-        "center" {
-            set left_spaces [expr {$spaces_needed / 2}]
-            set right_spaces [expr {$spaces_needed - $left_spaces}]
-            return "[string repeat " " $left_spaces]${original_line}[string repeat " " $right_spaces]"
-        }
-        default {
-            return "${original_line}[string repeat " " $spaces_needed]"
-        }
-    }
-}
-
 proc zesty::processTableContent {data columns separator styles content_style box_content_width options} {
     # Processes table content with column formatting and constraints.
     #
-    # data - table data as list of rows
-    # columns - column width specifications
-    # separator - column separator string
-    # styles - column-specific styles
-    # content_style - global content style
-    # box_content_width - available content width
-    # options - additional processing options
+    # data               - table data as list of rows
+    # columns            - column width specifications
+    # separator          - column separator string
+    # styles             - column-specific styles
+    # content_style      - global content style
+    # box_content_width  - available content width
+    # options            - additional processing options
     #
     # Returns list of processed line information dictionaries.
     set processed_lines {}
@@ -1128,54 +1092,26 @@ proc zesty::formatTableRow {row columns separator styles content_style options} 
 proc zesty::formatTableCell {content target_width alignment cell_padding} {
     # Formats individual table cell with correct padding handling.
     #
-    # content - cell content to format
+    # content      - cell content to format
     # target_width - target cell width including padding
-    # alignment - cell alignment (left, right, center)
+    # alignment    - cell alignment (left, right, center)
     # cell_padding - padding around cell content
     #
     # Returns formatted cell string with proper alignment and padding.
+    
     # Calculate available space for content (without padding)
     set content_space [expr {$target_width - 2 * $cell_padding}]
     if {$content_space < 1} {
         set content_space 1
     }
-
-    # Truncate content if necessary
-    set visible_length [string length [zesty::extractVisibleText $content]]
     
-    if {$visible_length > $content_space} {
-        if {$content_space >= 4} {
-            set content [zesty::smartTruncateStyledText \
-                $content \
-                [expr {$content_space - 3}] \
-                1
-            ]
-        } else {
-            set content [string repeat "." [expr {min($content_space, 3)}]]
-        }
-        set visible_length [string length [zesty::extractVisibleText $content]]
-    }
+    # Wrap content to available space
+    set wrapped_lines [zesty::wrapText $content $content_space 1]
+    set content [lindex $wrapped_lines 0]
     
-    # Calculate padding needed for alignment in content space
-    set padding_needed [expr {$content_space - $visible_length}]
+    # Apply content alignment using common function
+    set aligned_content [zesty::alignText $content $content_space $alignment]
     
-    # Apply content alignment
-    switch $alignment {
-        "left" {
-            set aligned_content "${content}[string repeat " " $padding_needed]"
-        }
-        "right" {
-            set aligned_content "[string repeat " " $padding_needed]${content}"
-        }
-        "center" {
-            set left_spaces [expr {$padding_needed / 2}]
-            set right_spaces [expr {$padding_needed - $left_spaces}]
-            set aligned_content "[string repeat " " $left_spaces]${content}[string repeat " " $right_spaces]"
-        }
-        default {
-            set aligned_content "${content}[string repeat " " $padding_needed]"
-        }
-    }
     # Add cell padding (uses paddingX from box)
     return "[string repeat " " $cell_padding]${aligned_content}[string repeat " " $cell_padding]"
 }
