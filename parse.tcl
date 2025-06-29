@@ -148,22 +148,27 @@ proc zesty::parseTypeFilters {text filters} {
 proc zesty::parseEqualFormat {attributes} {
     # Parses the format with equal sign (fg=red bold=true).
     # Handles quoted values and converts style dictionary to ANSI.
+    # Supports values with spaces when quoted (single or double quotes).
     #
     # attributes - attribute string with key=value pairs
     #
     # Returns: ANSI escape codes for the parsed attributes.
-    set style_dict [dict create]
-        
-    foreach attr [split $attributes] {
-        set attr [string trim $attr]
-        if {$attr eq ""} {continue}
-        
-        # Search for key=value format
-        if {[regexp {^([^=]+)=(.+)$} $attr -> key value]} {
-            # Remove single or double quotes if present
-            set value [string map {"'" "" "\"" ""} $value]
-            dict set style_dict $key $value
+    
+    set style_dict {}
+    set pattern {(\w+)\s*=\s*(?:'([^']*)'|\"([^\"]*)\"|([^\s]+))}
+    
+    set matches [regexp -all -inline $pattern $attributes]
+    
+    # Process each match
+    foreach {match key val_single val_double val_plain} $matches {
+        set value ""
+        foreach val [list $val_single $val_double $val_plain] {
+            if {$val ne ""} {
+                set value $val
+                break
+            }
         }
+        dict set style_dict $key $value
     }
     
     return [zesty::parseStyleDictToANSI $style_dict]
