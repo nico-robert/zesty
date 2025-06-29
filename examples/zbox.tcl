@@ -437,7 +437,6 @@ zesty::echo [zesty::box \
             enabled "true"
             columns {20 20 40}
             alignments {"left" "left" "left"}
-            separator ""
             styles {
                 {bold 1 fg 101}
                 {bold 1 fg 159}
