@@ -5,9 +5,9 @@ namespace eval zesty {}
 
 oo::class create zesty::Table {
     variable _options
-    variable _column_options 
-    variable _column_configs 
-    variable _rows 
+    variable _column_options
+    variable _column_configs
+    variable _rows
     variable _isWindows
     variable _termWidth
     variable _termHeight
@@ -88,7 +88,7 @@ oo::class create zesty::Table {
         zesty::def _column_configs "-style"    -validvalue formatStyle     -type any|none  -default ""
         zesty::def _column_configs "-justify"  -validvalue formatAlign     -type str       -default "left"
         zesty::def _column_configs "-vertical" -validvalue formatVertical  -type str       -default "middle"
-        zesty::def _column_configs "-width"    -validvalue {}              -type num       -default 0
+        zesty::def _column_configs "-width"    -validvalue formatColums    -type num       -default -1
         zesty::def _column_configs "-minWidth" -validvalue {}              -type num       -default 0
         zesty::def _column_configs "-maxWidth" -validvalue {}              -type num       -default 0
         zesty::def _column_configs "-noWrap"   -validvalue formatVBool     -type any       -default "false"
@@ -111,7 +111,7 @@ oo::class create zesty::Table {
             # Use the configured maxVisibleLines value
             set availableHeight [expr {$maxLines - 2}]
         }
-        
+
         # Ensure minimum height
         if {$availableHeight < 5} {
             set availableHeight 5
@@ -119,13 +119,13 @@ oo::class create zesty::Table {
 
         set contentLines [split $fullContent "\n"]
         set totalLines [llength $contentLines]
-        
+
         # If table fits entirely in available space, display it directly
         if {$totalLines <= $availableHeight} {
             zesty::echo $fullContent
             return {}
         }
-        
+
         # Analyze table structure to identify important parts
         set headerEndLine 0
         set footerStartLine $totalLines
@@ -138,55 +138,55 @@ oo::class create zesty::Table {
         # (last line with "+" or "├" before footer lines)
         set footerStartLine [zesty::findLastPattern $contentLines $::zesty::tablestyles]
         if {$footerStartLine == -1} {set footerStartLine $totalLines}
-    
+
         # Determine fixed and scrollable parts
         set headerLines [lrange $contentLines 0 $headerEndLine]
         set footerLines [lrange $contentLines $footerStartLine end]
-        
+
         # Calculate available space for data between header and footer
         set dataStartLine [expr {$headerEndLine + 1}]
         set dataEndLine [expr {$footerStartLine - 1}]
         set dataLines [lrange $contentLines $dataStartLine $dataEndLine]
         set totalDataLines [llength $dataLines]
-        
+
         # Calculate how many data lines can be displayed at once
         set visibleDataHeight [expr {$availableHeight - [llength $headerLines] - [llength $footerLines]}]
         if {$visibleDataHeight < 1} {set visibleDataHeight 1}
-        
+
         # Calculate total number of pages
         set totalPages [expr {int(ceil(double($totalDataLines) / $visibleDataHeight))}]
         if {$totalPages < 1} {set totalPages 1}
-        
+
         # Display data page by page
         set currentPage 0
-        
+
         while {$currentPage < $totalPages} {
             # Clear screen before displaying new page
             zesty::resetTerminal
 
             # Display fixed header
             zesty::echo [join $headerLines "\n"]
-            
+
             # Calculate which data lines to display for this page
             set pageStart [expr {$currentPage * $visibleDataHeight}]
             set pageEnd [expr {$pageStart + $visibleDataHeight - 1}]
             if {$pageEnd >= $totalDataLines} {
                 set pageEnd [expr {$totalDataLines - 1}]
             }
-            
+
             # Display data lines for this page
             for {set i $pageStart} {$i <= $pageEnd} {incr i} {
                 if {$i < $totalDataLines} {
                     zesty::echo [lindex $dataLines $i]
                 }
             }
-            
+
             # Display table footer
             zesty::echo [join $footerLines "\n"]
 
             set keyquit [dict get $_options keyQuit]
             set keypgup [dict get $_options keyPgup]
-            
+
             # Display pagination information with maxVisibleLines info if applicable
             if {[dict get $_options maxVisibleLines] > 0} {
                 zesty::echo "-- Page [expr {$currentPage + 1}] of $totalPages -- \
@@ -197,7 +197,7 @@ oo::class create zesty::Table {
                             Lines [expr {$pageStart + 1}]-[expr {$pageEnd + 1}] of $totalDataLines --"
             }
             zesty::echo "Press Enter to continue, '$keyquit' to quit, '$keypgup' for previous page..."
-            
+
             # Read user input
             set input [string tolower [string trim [gets stdin]]]
 
@@ -218,10 +218,10 @@ oo::class create zesty::Table {
                 }
             }
         }
-        
+
         # Clear screen at the end
         zesty::resetTerminal
-        
+
         return {}
     }
 
@@ -236,50 +236,50 @@ oo::class create zesty::Table {
         set availableHeight [expr {$_termHeight - 2}]
         set contentLines [split $fullContent "\n"]
         set totalLines [llength $contentLines]
-        
+
         # If table fits entirely in terminal, display it directly
         if {$totalLines <= $availableHeight} {
             zesty::echo $fullContent
             return {}
         }
-        
+
         # Analyze structure to identify header part to keep visible
         set headerEndLine 0
-        
+
         # Find line that separates header from content
         # (first line with "+" or "├" after header lines)
         set headerEndLine [zesty::findFirstPattern $contentLines $::zesty::tablestyles]
         if {$headerEndLine == -1} {set headerEndLine 0}
-        
+
         # Fixed part (header)
         set headerLines [lrange $contentLines 0 $headerEndLine]
         set headerHeight [llength $headerLines]
-        
+
         # Scrollable part (content)
-        set dataLines [lrange $contentLines [expr {$headerEndLine + 1}] end]
+        set dataLines [lrange $contentLines $headerEndLine+1 end]
         set totalDataLines [llength $dataLines]
-        
+
         # Available space for data
         set visibleDataHeight [expr {$availableHeight - $headerHeight}]
         if {$visibleDataHeight < 5} {set visibleDataHeight 5}
-        
+
         # Display data with scrolling
         set startLine 0
         set maxStartLine [expr {$totalDataLines - $visibleDataHeight}]
         if {$maxStartLine < 0} {set maxStartLine 0}
-        
+
         while {1} {
             zesty::resetTerminal
-            
+
             # Display fixed header
             zesty::echo [join $headerLines "\n"]
-            
+
             # Display visible data lines
             set endLine [expr {$startLine + $visibleDataHeight - 1}]
             if {$endLine >= $totalDataLines} {
                 set endLine [expr {$totalDataLines - 1}]
             }
-            
+
             for {set i $startLine} {$i <= $endLine} {incr i} {
                 if {$i < $totalDataLines} {
                     zesty::echo [lindex $dataLines $i]
@@ -289,7 +289,7 @@ oo::class create zesty::Table {
             set keyquit [dict get $_options keyQuit]
             set keypgup [dict get $_options keyPgup]
             set keypgdn [dict get $_options keyPgdn]
-            
+
             # Display position information
             set cline [expr {$startLine + 1}]-[expr {$endLine + 1}]
             zesty::echo "-- Lines $cline of $totalDataLines | $keypgdn: down, $keypgup: up, $keyquit: quit --"
@@ -313,10 +313,10 @@ oo::class create zesty::Table {
                 }
             }
         }
-        
+
         # Clear screen at the end
         zesty::resetTerminal
-        
+
         return {}
     }
 
@@ -337,16 +337,7 @@ oo::class create zesty::Table {
 
         # Store column header and its options
         dict set _column_options $_col_index $colopts
-        
-        # Handle existing rows by adding empty cell for new column
-        set numExistingRows [llength $_rows]
-        if {$numExistingRows > 0} {
-            for {set i 0} {$i < $numExistingRows} {incr i} {
-                lappend _rows [lindex $_rows $i] ""
-                set _rows [lreplace $_rows $i $i]
-            }
-        }
-        
+
         return {}
     }
 
@@ -359,7 +350,7 @@ oo::class create zesty::Table {
 
         set contentLines [split $fullContent "\n"]
         set totalLines   [llength $contentLines]
-        
+
         # Determine maximum number of lines to display
         set maxLines [dict get $_options maxVisibleLines]
         if {($maxLines <= 0 )|| $maxLines >= ($_termHeight - 2)} {
@@ -369,16 +360,16 @@ oo::class create zesty::Table {
             incr maxLines -2
             if {$maxLines < 10} {set maxLines 10}
         }
-        
+
         # If content fits in available space, display normally
         if {$totalLines <= $maxLines} {
             zesty::echo $fullContent
             return {}
         }
-        
+
         # Number of lines to keep for fixed table parts (header, etc.)
         set headerRows 0
-        
+
         # Identify header lines to preserve
         # (Title, top line and column headers)
         if {[dict get $_options title name] ne ""} {
@@ -386,11 +377,11 @@ oo::class create zesty::Table {
         } else {
             incr headerRows 1  ;# Only top line
         }
-        
+
         if {[dict get $_options header show]} {
             # Calculate header height
             set headerHeight 1  ;# Minimum one line for column headers
-            
+
             set pad [dict get $_options padding]
 
             # Find maximum height of column headers
@@ -401,48 +392,48 @@ oo::class create zesty::Table {
                     set colWidth [expr {$width - 2 * $pad}]
                     break
                 }
-                
+
                 set lines [zesty::wrapText $col $colWidth 0]
                 set lineCount [llength $lines]
                 if {$lineCount > $headerHeight} {
                     set headerHeight $lineCount
                 }
             }
-            
+
             incr headerRows $headerHeight
             # Add separator line under header
             incr headerRows
         }
-        
+
         # Number of lines for table bottom (footer and bottom line)
         set footerRows 1  ;# At minimum the bottom line
-        
+
         if {[dict get $_options footer show]} {
             incr footerRows  ;# Table footer line
         }
 
         set caption_name [dict get $_options caption name]
-        
+
         if {$caption_name ne ""} {
             # Estimate number of lines for caption
             set captionWidth [expr {$tableWidth - 2}]
             set wrappedCaption [zesty::wrapText $caption_name $captionWidth 0]
             incr footerRows [llength $wrappedCaption]
         }
-        
+
         # Calculate number of lines available for scrollable content
         set contentRows [expr {$maxLines - $headerRows - $footerRows}]
         if {$contentRows < 5} {set contentRows 5}
-        
+
         # Total number of "data" lines (without header or footer)
         set dataLines [expr {$totalLines - $headerRows - $footerRows}]
-        
+
         # If not enough data to scroll, display normally
         if {$dataLines <= $contentRows} {
             zesty::echo $fullContent
             return {}
         }
-        
+
         # Display different parts of the table
         # 1. Header (always visible)
         set headerContent {}
@@ -450,31 +441,31 @@ oo::class create zesty::Table {
             lappend headerContent [lindex $contentLines $i]
         }
         zesty::echo [join $headerContent "\n"]
-        
+
         # 2. Content with scrolling
         for {set dataStart 0} {$dataStart <= $dataLines - $contentRows} {incr dataStart} {
             # Absolute position in complete table
             set start [expr {$headerRows + $dataStart}]
             set end [expr {$start + $contentRows - 1}]
-            
+
             # Get and display visible segment
             set visibleContent {}
             for {set i $start} {$i <= $end} {incr i} {
                 lappend visibleContent [lindex $contentLines $i]
             }
             zesty::echo [join $visibleContent "\n"]
-            
+
             # 3. Table footer (always visible)
             set footerContent {}
             for {set i [expr {$totalLines - $footerRows}]} {$i < $totalLines} {incr i} {
                 lappend footerContent [lindex $contentLines $i]
             }
             zesty::echo [join $footerContent "\n"]
-            
+
             # Add progress indicator
             zesty::echo "-- Lines [expr {$dataStart + 1}]-[expr {$dataStart + $contentRows}]\
                         out of $dataLines (Press Enter to continue, q to quit) --"
-            
+
             # Wait for user input
             set input [string tolower [string trim [gets stdin]]]
             set keyquit [dict get $_options keyQuit]
@@ -482,16 +473,16 @@ oo::class create zesty::Table {
             if {$input eq [string tolower $keyquit]} {
                 break
             }
-            
+
             # Clear screen for next page (except for last)
             if {$dataStart < $dataLines - $contentRows} {
                 puts "\033\[H\033\[J"  ;# Clear screen and place cursor at top
-                
+
                 # Redisplay fixed header
                 zesty::echo [join $headerContent "\n"]
             }
         }
-        
+
         return {}
     }
 
@@ -503,21 +494,34 @@ oo::class create zesty::Table {
         # Returns nothing.
         set numCols [dict size $_column_options]
         set numArgs [llength $args]
-        
+
         # Ensure we have sufficient arguments
         if {$numArgs > $numCols} {
-            zesty::throwError "Too many arguments provided: $numArgs for $numCols columns"
+            error "zesty(error): Too many arguments provided\
+                '$numArgs' for '$numCols' columns"
         }
-        
+
         # Padding with empty strings for missing columns
         set row $args
         while {[llength $row] < $numCols} {
             lappend row ""
         }
-        
+
         lappend _rows $row
 
         return {}
+    }
+
+    method setTermWidth {width} {
+        # Sets terminal width.
+        #
+        # width - Terminal width in characters
+        #
+        # Returns nothing.
+        if {$width <= 0} {
+            error "zesty(error): Invalid terminal width '$width'"
+        }
+        set _termWidth $width
     }
 
     method CalculateTableColumnWidths {} {
@@ -525,68 +529,385 @@ oo::class create zesty::Table {
         #
         # Returns list of column widths in characters including padding.
 
-        set colWidths {}
-        
+        set naturalWidths [my GetNaturalColumnWidths]
+        set numCols [dict size $_column_options]
+        set pad [dict get $_options padding]
+
+        # Calculate available space
+        set availableWidth [my GetAvailableTableWidth]
+
+        # Separate fixed and auto columns
+        lassign [my ClassifyColumns] autoColumns fixedColumns fixedTotalWidth
+
+        # Special case: all columns are auto
+        if {[llength $autoColumns] == $numCols && $numCols > 0} {
+            return [my DistributeAllAutoColumns $naturalWidths $availableWidth $pad]
+        }
+
+        # Mixed case: some fixed, some auto
+        return [my DistributeMixedColumns \
+            $naturalWidths $availableWidth $pad \
+            $autoColumns $fixedColumns $fixedTotalWidth
+        ]
+    }
+
+    method GetNaturalColumnWidths {} {
+        # Calculate natural width for each column based on content.
+        # Takes noWrap option into account.
+        #
+        # Returns list of natural widths without padding.
+
+        set naturalWidths {}
+
         for {set i 0} {$i < [dict size $_column_options]} {incr i} {
-            set colOpts [dict get $_column_options $i]
-            
             set header [dict get $_column_options $i name]
-            set headerLen [zesty::strLength $header]
+            set headerLen [zesty::strLength [zesty::extractVisibleText $header]]
             set maxContentLen 0
-            
-            # Find maximum content length
+
+            # Check if noWrap is enabled for this column
+            set noWrap [dict get $_column_options $i noWrap]
+
+            # Find maximum content width in this column
             foreach row $_rows {
-                # Ensure row has sufficient elements
                 if {$i < [llength $row]} {
                     set content [lindex $row $i]
-                    # Handle multiple lines in a cell
+
+                    # For noWrap columns, we need the absolute maximum line length
                     if {[string first "\n" $content] != -1} {
                         foreach line [split $content "\n"] {
-                            set lineLen [zesty::strLength \
-                                [zesty::extractVisibleText $line]
-                            ]
-                            if {$lineLen > $maxContentLen} {
-                                set maxContentLen $lineLen
+                            set contentLen [zesty::strLength [zesty::extractVisibleText $line]]
+                            if {$contentLen > $maxContentLen} {
+                                set maxContentLen $contentLen
                             }
                         }
                     } else {
-                        set contentLen [zesty::strLength \
-                            [zesty::extractVisibleText $content]
-                        ]
+                        set contentLen [zesty::strLength [zesty::extractVisibleText $content]]
                         if {$contentLen > $maxContentLen} {
                             set maxContentLen $contentLen
                         }
                     }
                 }
             }
-            
-            # Calculate column width
-            set width $maxContentLen
-            if {$headerLen > $width} {
-                set width $headerLen
+
+            # Natural width is the maximum of header and content
+            set naturalWidth [expr {max($headerLen, $maxContentLen)}]
+
+            # For noWrap columns, this is the minimum width we need
+            if {$noWrap} {
+                # Store this as a special requirement
+                dict set $_column_options $i _requiredWidth $naturalWidth
             }
 
-            set colWidth    [dict get $_column_options $i width]
-            set colMaxWidth [dict get $_column_options $i maxWidth]
+            lappend naturalWidths $naturalWidth
+        }
+
+        return $naturalWidths
+    }
+
+    method GetAvailableTableWidth {} {
+        # Calculate available width for table content.
+        #
+        # Returns available width excluding borders and separators.
+
+        set numCols [dict size $_column_options]
+        set lines_show [dict get $_options lines show]
+
+        # Space for separators and borders
+        set separatorSpace 0
+        if {$lines_show} {
+            set separatorSpace [expr {$numCols + 1}]
+        } elseif {[dict get $_options showEdge]} {
+            set separatorSpace 2
+        }
+
+        # Terminal width minus separators and safety margin
+        return [expr {$_termWidth - $separatorSpace - 2}]
+    }
+
+    method ClassifyColumns {} {
+        # Classify columns as auto or fixed width.
+        #
+        # Returns list of: autoColumns fixedColumns fixedTotalWidth
+
+        set autoColumns {}
+        set fixedColumns {}
+        set fixedTotalWidth 0
+        set pad [dict get $_options padding]
+
+        for {set i 0} {$i < [dict size $_column_options]} {incr i} {
+            set width [dict get $_column_options $i width]
+
+            if {$width == -1} {
+                lappend autoColumns $i
+            } else {
+                lappend fixedColumns $i
+                incr fixedTotalWidth [expr {$width + (2 * $pad)}]
+            }
+        }
+
+        return [list $autoColumns $fixedColumns $fixedTotalWidth]
+    }
+
+    method DistributeAllAutoColumns {naturalWidths availableWidth pad} {
+        # Distribute width when all columns are auto.
+        # Respects minWidth constraints for all columns.
+        #
+        # naturalWidths  - list of natural content widths
+        # availableWidth - total available width
+        # pad            - padding value
+        #
+        # Returns list of column widths with padding.
+
+        set numCols [llength $naturalWidths]
+
+        # Step 1: Calculate widths respecting minWidth
+        set colWidths {}
+        set totalRequired 0
+
+        for {set i 0} {$i < $numCols} {incr i} {
+            set naturalWidth [lindex $naturalWidths $i]
             set colMinWidth [dict get $_column_options $i minWidth]
-            
-            # Apply width constraints
-            if {$colWidth > 0} {
-                set width $colWidth
-            } elseif {($colMaxWidth > 0) && ($width > $colMaxWidth)} {
-                set width $colMaxWidth
-            } elseif {($colMinWidth > 0) && ($width < $colMinWidth)} {
+
+            # Width is MAX(natural, minWidth)
+            set width $naturalWidth
+            if {($colMinWidth > 0) && ($width < $colMinWidth)} {
                 set width $colMinWidth
             }
-            
-            # Add padding
-            set pad [dict get $_options padding]
-            set width [expr {$width + ($pad * 2)}]
-            
-            lappend colWidths $width
+
+            set widthWithPadding [expr {$width + (2 * $pad)}]
+            lappend colWidths $widthWithPadding
+            incr totalRequired $widthWithPadding
         }
-        
+
+        # Step 2: Check if compression is needed
+        if {$totalRequired <= $availableWidth} {
+            # Everything fits with minWidth respected
+            return $colWidths
+        }
+
+        # Step 3: Need compression - identify compressible columns
+        set compressibleColumns {}
+        set fixedSpace 0
+        set compressibleSpace 0
+
+        for {set i 0} {$i < $numCols} {incr i} {
+            set currentWidth [lindex $colWidths $i]
+            set colMinWidth [dict get $_column_options $i minWidth]
+            set minRequired [expr {($colMinWidth > 0) ? ($colMinWidth + 2 * $pad) : (5 + 2 * $pad)}]
+
+            if {$currentWidth > $minRequired} {
+                # This column can be compressed
+                lappend compressibleColumns $i
+                incr compressibleSpace [expr {$currentWidth - $minRequired}]
+            }
+            incr fixedSpace $minRequired
+        }
+
+        # Step 4: If total minimum requirements exceed available space
+        if {$fixedSpace > $availableWidth} {
+            # Even with all columns at minimum, we exceed available space
+            # Force proportional distribution
+            set equalWidth [expr {$availableWidth / $numCols}]
+            set colWidths {}
+
+            for {set i 0} {$i < $numCols} {incr i} {
+                lappend colWidths [expr {max($equalWidth, 3 + 2 * $pad)}]
+            }
+            return $colWidths
+        }
+
+        # Step 5: Compress only the compressible columns
+        if {[llength $compressibleColumns] > 0 && $compressibleSpace > 0} {
+            set needToCompress [expr {$totalRequired - $availableWidth}]
+
+            # Distribute compression proportionally among compressible columns
+            foreach idx $compressibleColumns {
+                set currentWidth [lindex $colWidths $idx]
+                set colMinWidth [dict get $_column_options $idx minWidth]
+                set minRequired [expr {($colMinWidth > 0) ? ($colMinWidth + 2 * $pad) : (5 + 2 * $pad)}]
+
+                # How much this column can be compressed
+                set canCompress [expr {$currentWidth - $minRequired}]
+
+                # Proportional compression
+                set compressionRatio [expr {double($canCompress) / double($compressibleSpace)}]
+                set toCompress [expr {int($needToCompress * $compressionRatio)}]
+
+                # Apply compression but respect minimum
+                set newWidth [expr {$currentWidth - $toCompress}]
+                if {$newWidth < $minRequired} {
+                    set newWidth $minRequired
+                }
+
+                lset colWidths $idx $newWidth
+            }
+        }
+
+        # Step 6: Final adjustment if still exceeding
+        set finalTotal [tcl::mathop::+ {*}$colWidths]
+        if {$finalTotal > $availableWidth} {
+            # Do a final proportional adjustment
+            set ratio [expr {double($availableWidth) / double($finalTotal)}]
+            set adjustedWidths {}
+
+            for {set i 0} {$i < $numCols} {incr i} {
+                set width [lindex $colWidths $i]
+                set newWidth [expr {int($width * $ratio)}]
+
+                # Still respect minimum
+                set colMinWidth [dict get $_column_options $i minWidth]
+                set minRequired [expr {($colMinWidth > 0) ? ($colMinWidth + 2 * $pad) : (5 + 2 * $pad)}]
+
+                if {$newWidth < $minRequired} {
+                    set newWidth $minRequired
+                }
+
+                lappend adjustedWidths $newWidth
+            }
+            return $adjustedWidths
+        }
+
         return $colWidths
+    }
+
+    method DistributeMixedColumns {naturalWidths availableWidth pad autoColumns fixedColumns fixedTotalWidth} {
+        # Distribute width with mixed fixed/auto columns.
+        #
+        # naturalWidths   - list of natural content widths
+        # availableWidth  - total available width
+        # pad             - padding value
+        # autoColumns     - list of auto column indices
+        # fixedColumns    - list of fixed column indices
+        # fixedTotalWidth - total width of fixed columns
+        #
+        # Returns list of column widths with padding.
+
+        set numCols [dict size $_column_options]
+        set colWidths {}
+
+        # Initialize with fixed columns
+        for {set i 0} {$i < $numCols} {incr i} {
+            if {$i in $fixedColumns} {
+                set width [dict get $_column_options $i width]
+                lappend colWidths [expr {$width + (2 * $pad)}]
+            } else {
+                lappend colWidths 0  ;# Placeholder
+            }
+        }
+
+        # Distribute remaining space to auto columns
+        set remainingSpace [expr {$availableWidth - $fixedTotalWidth}]
+
+        if {[llength $autoColumns] > 0 && $remainingSpace > 0} {
+            # Calculate proportions based on natural widths
+            set autoNaturalTotal 0
+            foreach idx $autoColumns {
+                incr autoNaturalTotal [lindex $naturalWidths $idx]
+            }
+
+            # Distribute proportionally
+            foreach idx $autoColumns {
+                set naturalWidth [lindex $naturalWidths $idx]
+                set proportion [expr {$autoNaturalTotal > 0 ?
+                    double($naturalWidth) / double($autoNaturalTotal) :
+                    1.0 / [llength $autoColumns]}]
+                set allocatedWidth [expr {int($remainingSpace * $proportion)}]
+
+                # Apply constraints and set width
+                lset colWidths $idx [my ConstrainColumnWidth $idx $allocatedWidth $pad]
+            }
+        } else {
+            # No space or no auto columns: use minimum
+            foreach idx $autoColumns {
+                lset colWidths $idx [expr {5 + (2 * $pad)}]
+            }
+        }
+
+        return $colWidths
+    }
+
+    method ApplyColumnConstraints {naturalWidths pad} {
+        # Apply min/max constraints to natural widths.
+        #
+        # naturalWidths - list of natural widths
+        # pad           - padding value
+        #
+        # Returns list of constrained widths with padding.
+
+        set colWidths {}
+
+        for {set i 0} {$i < [llength $naturalWidths]} {incr i} {
+            set width [lindex $naturalWidths $i]
+            set finalWidth [my ConstrainColumnWidth $i [expr {$width + 2 * $pad}] $pad]
+            lappend colWidths $finalWidth
+        }
+
+        return $colWidths
+    }
+
+    method ConstrainColumnWidth {colIndex targetWidth pad} {
+        # Apply min/max constraints to a column width.
+        # Also ensures noWrap columns get their required width.
+        #
+        # colIndex     - column index
+        # targetWidth  - target width with padding
+        # pad          - padding value
+        #
+        # Returns constrained width with padding.
+
+        set colMinWidth [dict get $_column_options $colIndex minWidth]
+        set colMaxWidth [dict get $_column_options $colIndex maxWidth]
+        set noWrap [dict get $_column_options $colIndex noWrap]
+
+        # For noWrap columns, ensure minimum is the required width
+        if {$noWrap && [dict exists $_column_options $colIndex _requiredWidth]} {
+            set requiredWidth [dict get $_column_options $colIndex _requiredWidth]
+            set requiredWithPadding [expr {$requiredWidth + (2 * $pad)}]
+
+            # The minimum for noWrap is the larger of configured minimum or required width
+            set minAllowed [expr {max(($colMinWidth > 0 ? $colMinWidth : 5), $requiredWidth)}]
+        } else {
+            # Normal minimum
+            set minAllowed [expr {($colMinWidth > 0) ? $colMinWidth : 5}]
+        }
+
+        set minWithPadding [expr {$minAllowed + (2 * $pad)}]
+
+        if {$targetWidth < $minWithPadding} {
+            set targetWidth $minWithPadding
+        }
+
+        # Apply maximum
+        if {($colMaxWidth > 0) && ($targetWidth > ($colMaxWidth + 2 * $pad))} {
+            set targetWidth [expr {$colMaxWidth + (2 * $pad)}]
+        }
+
+        return $targetWidth
+    }
+
+    method CalculateTotalTableWidth {colWidths} {
+        # Calculates total table width including separators and borders.
+        #
+        # colWidths - list of column widths
+        #
+        # Returns total table width in characters.
+
+        set tableWidth 0
+        foreach width $colWidths {
+            incr tableWidth $width
+        }
+
+        set numCols [llength $colWidths]
+        set lines_show [dict get $_options lines show]
+
+        # Add width of column separators
+        if {$lines_show} {
+            incr tableWidth [expr {$numCols + 1}]
+        } elseif {[dict get $_options showEdge]} {
+            incr tableWidth 2
+        }
+
+        return $tableWidth
     }
 
     method AlignCellContentVertical {lines cellHeight verticalAlign} {
@@ -600,12 +921,12 @@ oo::class create zesty::Table {
         # vertical alignment.
         set numLines [llength $lines]
         set result $lines
-        
+
         if {$numLines < $cellHeight} {
             set padding [expr {$cellHeight - $numLines}]
             set topPad 0
             set bottomPad 0
-            
+
             switch -exact -- $verticalAlign {
                 "top" {
                     set bottomPad $padding
@@ -619,7 +940,7 @@ oo::class create zesty::Table {
                     set bottomPad [expr {$padding - $topPad}]
                 }
             }
-            
+
             set result {}
             for {set i 0} {$i < $topPad} {incr i} {
                 lappend result ""
@@ -631,254 +952,193 @@ oo::class create zesty::Table {
                 lappend result ""
             }
         }
-        
+
         return $result
     }
 
-    method render {} {
-        # Renders the complete table as formatted text.
-        #
-        # Returns fully formatted table as string with borders, headers,
-        # content rows, and optional title/caption. Handles responsive
-        # sizing and style application.
 
-        set result ""
+    method AdjustColumnsForTitle {colWidths title} {
+        # Adjusts column widths if title is wider than table.
+        #
+        # colWidths - current column widths
+        # title     - title text
+        #
+        # Returns adjusted column widths list.
+
+        if {$title eq ""} {
+            return $colWidths
+        }
+
+        set titleWidth [zesty::strLength [zesty::extractVisibleText $title]]
+        set minTitleWidth [expr {$titleWidth + 2}]
+        set tableWidth [my CalculateTotalTableWidth $colWidths]
+
+        if {$minTitleWidth <= $tableWidth} {
+            return $colWidths
+        }
+
+        # Calculate extra space needed
+        set extraSpace [expr {$minTitleWidth - $tableWidth}]
+        set numCols [llength $colWidths]
+        set extraPerCol [expr {$extraSpace / $numCols}]
+        set remainder [expr {$extraSpace % $numCols}]
+
+        # Update column widths
+        set adjustedWidths {}
+        for {set i 0} {$i < $numCols} {incr i} {
+            set currentWidth [lindex $colWidths $i]
+            set newWidth [expr {$currentWidth + $extraPerCol}]
+            if {$i < $remainder} {
+                incr newWidth
+            }
+            lappend adjustedWidths $newWidth
+        }
+
+        return $adjustedWidths
+    }
+
+    method GetBoxCharacters {} {
+        # Gets box drawing characters based on configured style.
+        #
+        # Returns dictionary with box character keys.
+
         set boxtype [dict get $_options box type]
 
         if {![dict exists $::zesty::tablestyles $boxtype]} {
-            zesty::throwError "$boxtype is not a valid box type"
+            error "zesty(error): '$boxtype' is not a valid box type"
         }
 
         set boxchars [dict get $::zesty::tablestyles $boxtype]
-        set tl  [lindex $boxchars 0]  ;# Top Left corner
-        set tr  [lindex $boxchars 1]  ;# Top Right corner
-        set bl  [lindex $boxchars 2]  ;# Bottom Left corner
-        set br  [lindex $boxchars 3]  ;# Bottom Right corner
-        set vl  [lindex $boxchars 4]  ;# Vertical line
-        set hl  [lindex $boxchars 5]  ;# Horizontal line
-        set xc  [lindex $boxchars 6]  ;# Cross center
-        set tt  [lindex $boxchars 7]  ;# T-junction top
-        set tb  [lindex $boxchars 8]  ;# T-junction bottom
-        set tlj [lindex $boxchars 9]  ;# T-junction left
-        set trj [lindex $boxchars 10] ;# T-junction right
 
-        set colWidths [my CalculateTableColumnWidths]
-        set numCols   [dict size $_column_options]
-        set tableWidth 0
-        
-        foreach width $colWidths {
-            incr tableWidth $width
+        return [dict create \
+            tl  [lindex $boxchars 0] \
+            tr  [lindex $boxchars 1] \
+            bl  [lindex $boxchars 2] \
+            br  [lindex $boxchars 3] \
+            vl  [lindex $boxchars 4] \
+            hl  [lindex $boxchars 5] \
+            xc  [lindex $boxchars 6] \
+            tt  [lindex $boxchars 7] \
+            tb  [lindex $boxchars 8] \
+            tlj [lindex $boxchars 9] \
+            trj [lindex $boxchars 10]
+        ]
+    }
+
+    method RenderTitle {title tableWidth boxChars} {
+        # Renders table title section.
+        #
+        # title      - title text
+        # tableWidth - total table width
+        # boxChars   - dictionary of box characters
+        #
+        # Returns formatted title section string.
+
+        if {$title eq ""} {
+            return ""
         }
 
-        set lines_show  [dict get $_options lines show]
         set lines_style [dict get $_options lines style]
-        
-        # Add width of column separators
-        if {$lines_show} {
-            incr tableWidth [expr {$numCols + 1}]
-        } elseif {[dict get $_options showEdge]} {
-            incr tableWidth 2
-        }
-        
-        # Consider title width if present
-        set title [dict get $_options title name]
-        if {$title ne ""} {
-            set titleWidth [zesty::strLength [zesty::extractVisibleText $title]]
-            # Add 2 for minimal title padding
-            set minTitleWidth [expr {$titleWidth + 2}]
-            
-            # If title is wider than table, adjust table width
-            if {$minTitleWidth > $tableWidth} {
-                # Calculate how much extra space is needed
-                set extraSpace [expr {$minTitleWidth - $tableWidth}]
-                # Distribute extra space equally among columns
-                set extraPerCol [expr {$extraSpace / $numCols}]
-                set remainder [expr {$extraSpace % $numCols}]
-                
-                # Update column widths
-                for {set i 0} {$i < $numCols} {incr i} {
-                    set currentWidth [lindex $colWidths $i]
-                    set newWidth [expr {$currentWidth + $extraPerCol}]
-                    # Distribute remainder to first columns
-                    if {$i < $remainder} {
-                        incr newWidth
-                    }
-                    lset colWidths $i $newWidth
-                }
-                
-                # Recalculate total table width
-                set tableWidth 0
-                foreach width $colWidths {
-                    incr tableWidth $width
-                }
-                if {$lines_show} {
-                    incr tableWidth [expr {$numCols + 1}]
-                } elseif {[dict get $_options showEdge]} {
-                    incr tableWidth 2
-                }
-            }
-        }
-        
-        # Resize if necessary (existing code continues)
-        if {($_termWidth > 0) && ($tableWidth > $_termWidth)} {
-            # Space needed for borders and separators
-            set borderSpace 0
-            if {$lines_show} {
-                set borderSpace [expr {$numCols + 1}]
-            } elseif {[dict get $_options showEdge]} {
-                set borderSpace 2
-            }
-            
-            # Actually available space for content
-            set availableWidth [expr {$_termWidth - $borderSpace}]
-            
-            # 1. Prepare minimum width constraints for each column
-            set minWidths {}
-            set totalMinWidth 0
-            set pad [dict get $_options padding]
-            
-            for {set i 0} {$i < $numCols} {incr i} {
+        set result ""
 
-                set minwidth [dict get $_column_options $i minWidth]
-                
-                # Absolute minimum = max(padding*2+3, specified minWidth + padding*2)
-                set minWidth [expr {max(($pad*2 + 3), ($minwidth + $pad*2))}]
-                lappend minWidths $minWidth
-                incr totalMinWidth $minWidth
-            }
-            
-            # 2. If even minimum widths exceed available space, force absolute minimum
-            if {$totalMinWidth > $availableWidth} {
-                # Distribute available space equally
-                set equalWidth [expr {int($availableWidth / $numCols)}]
-                if {$equalWidth < 5} {set equalWidth 5}
-                
-                set adjustedColWidths {}
-                for {set i 0} {$i < $numCols} {incr i} {
-                    lappend adjustedColWidths $equalWidth
-                }
-            } else {
-                # 3. Calculate how much space we can allocate after guaranteeing minimums
-                set excessSpace [expr {$availableWidth - $totalMinWidth}]
-                
-                # Calculate proportion of each column from its current width
-                set totalAdjustableWidth 0
-                foreach width $colWidths {
-                    incr totalAdjustableWidth $width
-                }
-                
-                # Distribute excess space proportionally
-                set adjustedColWidths {}
-                set remainingExcess $excessSpace
-                
-                for {set i 0} {$i < $numCols} {incr i} {
-                    set colWidth [lindex $colWidths $i]
-                    set minWidth [lindex $minWidths $i]
-                    
-                    # Calculate proportional share of excess space
-                    set share 0
-                    if {$totalAdjustableWidth > 0} {
-                        set share [expr {int(double($colWidth) / $totalAdjustableWidth * $excessSpace)}]
-                    }
-                    
-                    # Ensure we don't exceed remaining space
-                    if {$share > $remainingExcess} {
-                        set share $remainingExcess
-                    }
-                    
-                    # New width is minimum plus proportional share
-                    set newWidth [expr {$minWidth + $share}]
-                    lappend adjustedColWidths $newWidth
-                    
-                    # Update remaining excess space
-                    set remainingExcess [expr {$remainingExcess - $share}]
-                }
-                
-                # Distribute any remaining space to first columns
-                for {set i 0} {$i < $numCols && $remainingExcess > 0} {incr i} {
-                    lset adjustedColWidths $i [expr {[lindex $adjustedColWidths $i] + 1}]
-                    incr remainingExcess -1
-                }
-            }
-
-            set colWidths $adjustedColWidths
-            
-            # Recalculate total table width
-            set tableWidth $borderSpace
-            foreach width $adjustedColWidths {
-                incr tableWidth $width
-            }
-        }
-        
-        # Display title (now that tableWidth is correctly calculated)
-        if {$title ne ""} {
-            set titleLine ""
-            if {[dict get $_options showEdge]} {
-                set hl_l [string repeat $hl [expr {$tableWidth - 2}]]
-                append titleLine [zesty::parseStyleDictToXML $tl $lines_style]
-                append titleLine [zesty::parseStyleDictToXML $hl_l $lines_style]
-                append titleLine [zesty::parseStyleDictToXML $tr $lines_style]
-                append titleLine "\n"
-            }
-
-            set title_justify [dict get $_options title justify]
-            set paddedTitle [zesty::alignText $title [expr {$tableWidth - 2}] $title_justify]
-            set title_style [dict get $_options title style]
-
-            set paddedTitle [zesty::parseStyleDictToXML $paddedTitle $title_style]
-            
-            if {[dict get $_options showEdge]} {
-                append titleLine [zesty::parseStyleDictToXML $vl $lines_style]
-                append titleLine $paddedTitle
-                append titleLine [zesty::parseStyleDictToXML $vl $lines_style]
-                append titleLine "\n"
-            } else {
-                append titleLine " $paddedTitle \n"
-            }
-            
-            append result $titleLine
-        }
-        
-        # Top line
-        set topLine ""
+        # Top border
         if {[dict get $_options showEdge]} {
-            # If we have a title, use appropriate junction characters
-            if {$title ne ""} {
-                append topLine $tlj  ;# Left junction
-            } else {
-                append topLine $tl  ;# Top left corner
-            }
+            set hl_l [string repeat [dict get $boxChars hl] [expr {$tableWidth - 2}]]
+            append result [zesty::parseStyleDictToXML [dict get $boxChars tl] $lines_style]
+            append result [zesty::parseStyleDictToXML $hl_l $lines_style]
+            append result [zesty::parseStyleDictToXML [dict get $boxChars tr] $lines_style]
+            append result "\n"
+        }
 
-            for {set i 0} {$i < $numCols} {incr i} {
-                append topLine [string repeat $hl [lindex $colWidths $i]]
-                
-                if {$i < [expr {$numCols - 1}] && $lines_show} {
-                    # Use correct junction character
-                    if {$title ne ""} {
-                        append topLine $tt  ;# T-junction top
-                    } else {
-                        append topLine $tt  ;# Normal junction
-                    }
+        # Title text
+        set title_justify [dict get $_options title justify]
+        set paddedTitle [zesty::alignText $title [expr {$tableWidth - 2}] $title_justify]
+        set title_style [dict get $_options title style]
+        set paddedTitle [zesty::parseStyleDictToXML $paddedTitle $title_style]
+
+        if {[dict get $_options showEdge]} {
+            append result [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
+            append result $paddedTitle
+            append result [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
+        } else {
+            append result " $paddedTitle"
+        }
+        append result "\n"
+
+        return $result
+    }
+
+    method RenderTopBorder {tableWidth hasTitle boxChars} {
+        # Renders top border of table.
+        #
+        # tableWidth - total table width
+        # hasTitle   - whether table has a title
+        # boxChars   - dictionary of box characters
+        #
+        # Returns formatted top border string.
+
+        if {![dict get $_options showEdge]} {
+            return ""
+        }
+
+        set lines_style [dict get $_options lines style]
+        set lines_show [dict get $_options lines show]
+        set numCols [dict size $_column_options]
+        set colWidths [my CalculateTableColumnWidths]
+
+        set topLine ""
+
+        # Choose appropriate corner characters
+        if {$hasTitle} {
+            append topLine [dict get $boxChars tlj]
+        } else {
+            append topLine [dict get $boxChars tl]
+        }
+
+        for {set i 0} {$i < $numCols} {incr i} {
+            append topLine [string repeat [dict get $boxChars hl] [lindex $colWidths $i]]
+
+            if {$i < [expr {$numCols - 1}] && $lines_show} {
+                if {$hasTitle} {
+                    append topLine [dict get $boxChars tt]
+                } else {
+                    append topLine [dict get $boxChars tt]
                 }
             }
-
-            # If we have a title, use appropriate junction characters
-            if {$title ne ""} {
-                append topLine $trj  ;# Right junction
-            } else {
-                append topLine $tr  ;# Top right corner
-            }
-
-            set topLine [zesty::parseStyleDictToXML $topLine $lines_style]
-            
-            append result "$topLine\n"
-
         }
-        
-        # Prepare column headers
+
+        if {$hasTitle} {
+            append topLine [dict get $boxChars trj]
+        } else {
+            append topLine [dict get $boxChars tr]
+        }
+
+        return "[zesty::parseStyleDictToXML $topLine $lines_style]\n"
+    }
+
+    method RenderHeader {colWidths boxChars} {
+        # Renders table header with column names.
+        #
+        # colWidths - list of column widths
+        # boxChars  - dictionary of box characters
+        #
+        # Returns formatted header string.
+
+        if {![dict get $_options header show]} {
+            return ""
+        }
+
+        set result ""
+        set lines_style [dict get $_options lines style]
+        set lines_show [dict get $_options lines show]
+        set header_style [dict get $_options header style]
+        set numCols [dict size $_column_options]
+        set pad [dict get $_options padding]
+
+        # Prepare wrapped headers
         set headerLines {}
         set maxHeaderHeight 1
-        set pad [dict get $_options padding]
+
         for {set i 0} {$i < $numCols} {incr i} {
             set colWidth [lindex $colWidths $i]
             set availableWidth [expr {$colWidth - 2 * $pad}]
@@ -890,208 +1150,304 @@ oo::class create zesty::Table {
                 set wrappedHeader [zesty::wrapText $headerText $availableWidth 1]
                 lappend headerLines $wrappedHeader
             }
-            
-            # Update maximum header height
+
             set headerHeight [llength [lindex $headerLines end]]
             if {$headerHeight > $maxHeaderHeight} {
                 set maxHeaderHeight $headerHeight
             }
         }
-        
-        # Header
-        if {[dict get $_options header show]} {
-            set header_style [dict get $_options header style]
-            # Display multiline header
-            for {set lineIdx 0} {$lineIdx < $maxHeaderHeight} {incr lineIdx} {
-                set headerLine ""
-                if {[dict get $_options showEdge]} {
-                    append headerLine [zesty::parseStyleDictToXML $vl $lines_style]
-                }
-                
-                for {set colIdx 0} {$colIdx < $numCols} {incr colIdx} {
-                    set colWidth [lindex $colWidths $colIdx]
-                    set colContent ""
-                    if {$lineIdx < [llength [lindex $headerLines $colIdx]]} {
-                        set colContent [lindex $headerLines $colIdx $lineIdx]
-                    }
-                    
-                    set justify [dict get $_column_options $colIdx justify]
-                    set padding [string repeat " " $pad]
-                    
-                    if {$colContent eq ""} {
-                        set paddedContent [string repeat " " $colWidth]
-                    } else {
-                        set paddedContent "$padding$colContent$padding"
-                        set paddedContent [zesty::alignText $paddedContent $colWidth $justify]
-                    }
 
-                    append headerLine [zesty::parseStyleDictToXML $paddedContent $header_style]
-                    
-                    if {$colIdx < [expr {$numCols - 1}] && $lines_show} {
-                        append headerLine [zesty::parseStyleDictToXML $vl $lines_style]
-                    }
-                }
-                
-                if {[dict get $_options showEdge]} {
-                    append headerLine [zesty::parseStyleDictToXML $vl $lines_style]
-                }
-                
-                append result "$headerLine\n"
-            }
-            
-            # Separator line after header
-            set sepLine ""
+        # Display multiline header
+        for {set lineIdx 0} {$lineIdx < $maxHeaderHeight} {incr lineIdx} {
+            set headerLine ""
             if {[dict get $_options showEdge]} {
-                append sepLine $tlj
-                for {set i 0} {$i < $numCols} {incr i} {
-                    append sepLine [string repeat $hl [lindex $colWidths $i]]
-                    if {$i < [expr {$numCols - 1}] && $lines_show} {
-                        append sepLine $xc
-                    }
+                append headerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
+            }
+
+            for {set colIdx 0} {$colIdx < $numCols} {incr colIdx} {
+                set colWidth [lindex $colWidths $colIdx]
+                set colContent ""
+                if {$lineIdx < [llength [lindex $headerLines $colIdx]]} {
+                    set colContent [lindex $headerLines $colIdx $lineIdx]
                 }
 
-                if {[dict get $_options showEdge]} {
-                    append sepLine $trj
+                set justify [dict get $_column_options $colIdx justify]
+                set padding [string repeat " " $pad]
+
+                if {$colContent eq ""} {
+                    set paddedContent [string repeat " " $colWidth]
+                } else {
+                    set paddedContent "$padding$colContent$padding"
+                    set paddedContent [zesty::alignText $paddedContent $colWidth $justify]
                 }
 
-                set sepLine [zesty::parseStyleDictToXML $sepLine $lines_style]
-                append result "$sepLine\n"
+                append headerLine [zesty::parseStyleDictToXML $paddedContent $header_style]
+
+                if {$colIdx < [expr {$numCols - 1}] && $lines_show} {
+                    append headerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
+                }
+            }
+
+            if {[dict get $_options showEdge]} {
+                append headerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
+            }
+
+            append result "$headerLine\n"
+        }
+
+        return $result
+    }
+
+    method RenderHeaderSeparator {colWidths boxChars} {
+        # Renders separator line after header.
+        #
+        # colWidths - list of column widths
+        # boxChars  - dictionary of box characters
+        #
+        # Returns formatted separator string.
+
+        if {![dict get $_options header show] || ![dict get $_options showEdge]} {
+            return ""
+        }
+
+        set lines_style [dict get $_options lines style]
+        set lines_show [dict get $_options lines show]
+        set numCols [dict size $_column_options]
+
+        set sepLine ""
+        append sepLine [dict get $boxChars tlj]
+
+        for {set i 0} {$i < $numCols} {incr i} {
+            append sepLine [string repeat [dict get $boxChars hl] [lindex $colWidths $i]]
+            if {$i < [expr {$numCols - 1}] && $lines_show} {
+                append sepLine [dict get $boxChars xc]
             }
         }
-        
-        # Prepare cell contents
+
+        append sepLine [dict get $boxChars trj]
+
+        return "[zesty::parseStyleDictToXML $sepLine $lines_style]\n"
+    }
+
+    method ProcessRows {colWidths} {
+        # Processes all rows for rendering with proper wrapping and alignment.
+        #
+        # colWidths - list of column widths
+        #
+        # Returns list of processed rows with height and aligned cells.
+
         set processedRows {}
-        
+
         foreach row $_rows {
             set processedCells {}
             set rowHeight 1
-            
-            for {set i 0} {$i < $numCols} {incr i} {                
+
+            for {set i 0} {$i < [dict size $_column_options]} {incr i} {
                 set content [lindex $row $i]
                 if {$content eq ""} {set content " "}
-                
+
                 set colWidth [expr {[lindex $colWidths $i] - 2 * [dict get $_options padding]}]
                 set wrappedContent {}
-
                 set nowrap [dict get $_column_options $i noWrap]
-                
+
                 # Handle manual line breaks first
                 if {[string first "\n" $content] != -1} {
                     set lines [split $content "\n"]
                     foreach line $lines {
-                        # Wrap each line individually
                         set wrapped [zesty::wrapText $line $colWidth $nowrap]
                         foreach wline $wrapped {
                             lappend wrappedContent $wline
                         }
                     }
                 } else {
-                    # Wrap content normally
                     set wrappedContent [zesty::wrapText $content $colWidth $nowrap]
                 }
-                
-                # Update line height
+
                 set cellHeight [llength $wrappedContent]
                 if {$cellHeight > $rowHeight} {
                     set rowHeight $cellHeight
                 }
-                
+
                 lappend processedCells $wrappedContent
             }
-            
+
             # Vertically align all cells in the row
             set alignedCells {}
-            for {set i 0} {$i < $numCols} {incr i} {
-                
+            for {set i 0} {$i < [dict size $_column_options]} {incr i} {
                 set vertical [dict get $_column_options $i vertical]
-                
                 set cellContent [lindex $processedCells $i]
                 set alignedContent [my AlignCellContentVertical $cellContent $rowHeight $vertical]
-                
                 lappend alignedCells $alignedContent
             }
-            
+
             lappend processedRows [list $rowHeight $alignedCells]
         }
-        
-        # Display content rows
+
+        return $processedRows
+    }
+
+    method RenderDataRows {processedRows colWidths boxChars} {
+        # Renders all data rows with proper formatting.
+        #
+        # processedRows - processed row data with height and cells
+        # colWidths     - column widths
+        # boxChars      - dictionary of box characters
+        #
+        # Returns formatted data rows string.
+
+        set result ""
+        set lines_show [dict get $_options lines show]
+        set lines_style [dict get $_options lines style]
+        set numCols [dict size $_column_options]
+
         foreach processedRow $processedRows {
             set rowHeight [lindex $processedRow 0]
             set alignedCells [lindex $processedRow 1]
-            
+
             for {set lineIdx 0} {$lineIdx < $rowHeight} {incr lineIdx} {
                 set rowLine ""
                 if {[dict get $_options showEdge]} {
-                    append rowLine [zesty::parseStyleDictToXML $vl $lines_style]
+                    append rowLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
                 }
-                
-                for {set colIdx 0} {$colIdx < $numCols} {incr colIdx} {
 
+                for {set colIdx 0} {$colIdx < $numCols} {incr colIdx} {
                     set col_style [dict get $_column_options $colIdx style]
-                    
                     set colWidth [lindex $colWidths $colIdx]
                     set colContent ""
+
                     if {$lineIdx < [llength [lindex $alignedCells $colIdx]]} {
                         set colContent [lindex $alignedCells $colIdx $lineIdx]
                     }
 
                     set justify [dict get $_column_options $colIdx justify]
-                    
-                    # Padding
                     set padding [string repeat " " [dict get $_options padding]]
                     set paddedContent "$padding$colContent$padding"
                     set paddedContent [zesty::alignText $paddedContent $colWidth $justify]
 
                     append rowLine [zesty::parseStyleDictToXML $paddedContent $col_style]
-                    
+
                     if {$colIdx < [expr {$numCols - 1}] && $lines_show} {
-                        append rowLine [zesty::parseStyleDictToXML $vl $lines_style]
+                        append rowLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
                     }
                 }
-                
+
                 if {[dict get $_options showEdge]} {
-                    append rowLine [zesty::parseStyleDictToXML $vl $lines_style]
+                    append rowLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
                 }
-                
+
                 append result "$rowLine\n"
             }
         }
-        
-        # Bottom line
+
+        return $result
+    }
+
+    method RenderBottomBorder {tableWidth boxChars} {
+        # Renders bottom border of table.
+        #
+        # tableWidth - total table width
+        # boxChars   - dictionary of box characters
+        #
+        # Returns formatted bottom border string.
+
+        if {![dict get $_options showEdge]} {
+            return ""
+        }
+
+        set lines_style [dict get $_options lines style]
+        set lines_show [dict get $_options lines show]
+        set numCols [dict size $_column_options]
+        set colWidths [my CalculateTableColumnWidths]
+
         set bottomLine ""
-        if {[dict get $_options showEdge]} {
-            append bottomLine $bl
+        append bottomLine [dict get $boxChars bl]
 
-            for {set i 0} {$i < $numCols} {incr i} {
-                append bottomLine [string repeat $hl [lindex $colWidths $i]]
-                
-                if {$i < [expr {$numCols - 1}] && $lines_show} {
-                    append bottomLine $tb
-                }
+        for {set i 0} {$i < $numCols} {incr i} {
+            append bottomLine [string repeat [dict get $boxChars hl] [lindex $colWidths $i]]
+
+            if {$i < [expr {$numCols - 1}] && $lines_show} {
+                append bottomLine [dict get $boxChars tb]
             }
-            append bottomLine $br
-            set bottomLine [zesty::parseStyleDictToXML $bottomLine $lines_style]
-            append result "$bottomLine\n"
         }
 
-        # Display caption
-        set caption_name  [dict get $_options caption name]
+        append bottomLine [dict get $boxChars br]
+
+        return "[zesty::parseStyleDictToXML $bottomLine $lines_style]\n"
+    }
+
+    method RenderCaption {tableWidth} {
+        # Renders table caption.
+        #
+        # tableWidth - total table width
+        #
+        # Returns formatted caption string.
+
+        set caption_name [dict get $_options caption name]
+        if {$caption_name eq ""} {
+            return ""
+        }
+
         set caption_style [dict get $_options caption style]
-        if {$caption_name ne ""} {
-            set captionLine ""
-            
-            # Apply wrapping to caption
-            set maxCaptionWidth [expr {$tableWidth - 2}]
-            set wrappedCaption [zesty::wrapText $caption_name $maxCaptionWidth 0]
-            
-            foreach line $wrappedCaption {
-                set paddedLine [zesty::alignText $line $tableWidth [dict get $_options caption justify]]
-                append captionLine "$paddedLine\n"
-            }
+        set captionLine ""
 
-            append result [zesty::parseStyleDictToXML $captionLine $caption_style]
+        # Apply wrapping to caption
+        set maxCaptionWidth [expr {$tableWidth - 2}]
+        set wrappedCaption [zesty::wrapText $caption_name $maxCaptionWidth 0]
+
+        foreach line $wrappedCaption {
+            set paddedLine [zesty::alignText $line $tableWidth [dict get $_options caption justify]]
+            append captionLine "$paddedLine\n"
         }
-        
+
+        return [zesty::parseStyleDictToXML $captionLine $caption_style]
+    }
+
+    method render {} {
+        # Renders the complete table as formatted text.
+        #
+        # Returns fully formatted table as string with borders, headers,
+        # content rows, and optional title/caption.
+
+        # Get box characters
+        set boxChars [my GetBoxCharacters]
+
+        # Calculate column widths
+        set colWidths [my CalculateTableColumnWidths]
+
+        # Adjust for title if needed
+        set title [dict get $_options title name]
+        set colWidths [my AdjustColumnsForTitle $colWidths $title]
+
+        # Calculate total table width
+        set tableWidth [my CalculateTotalTableWidth $colWidths]
+
+        # Build the table
+        set result ""
+
+        # Title
+        append result [my RenderTitle $title $tableWidth $boxChars]
+
+        # Top border
+        append result [my RenderTopBorder \
+            $tableWidth \
+            [expr {$title ne ""}] \
+            $boxChars
+        ]
+
+        # Header
+        append result [my RenderHeader $colWidths $boxChars]
+        append result [my RenderHeaderSeparator $colWidths $boxChars]
+
+        # Data rows
+        set processedRows [my ProcessRows $colWidths]
+        append result [my RenderDataRows $processedRows $colWidths $boxChars]
+
+        # Bottom border
+        append result [my RenderBottomBorder $tableWidth $boxChars]
+
+        # Caption
+        append result [my RenderCaption $tableWidth]
+
         return $result
     }
 
