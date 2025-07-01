@@ -291,7 +291,7 @@ proc zesty::smartTruncateStyledText {styled_text target_length add_ellipsis} {
         
         # Text before tag (non-styled)
         if {$current_pos < $match_start} {
-            set before_text [string range $styled_text $current_pos [expr {$match_start - 1}]]
+            set before_text [string range $styled_text $current_pos $match_start-1]
             if {$before_text ne ""} {
                 lappend segments [list "plain" $before_text]
             }
@@ -337,7 +337,7 @@ proc zesty::smartTruncateStyledText {styled_text target_length add_ellipsis} {
             # Segment must be truncated
             set remaining_space [expr {$effective_target - $visible_count}]
             if {$remaining_space > 0} {
-                set truncated_content [string range $content 0 [expr {$remaining_space - 1}]]
+                set truncated_content [string range $content 0 $remaining_space-1]
                 if {$type eq "styled"} {
                     set attributes [lindex $segment 2]
                     append result "<s $attributes>${truncated_content}...</s>"
@@ -466,4 +466,46 @@ proc zesty::strLength {text} {
     }
     
     return $width
+}
+
+proc zesty::formatTextWithAlignment {text width align preserveStyles ellipsisThreshold} {
+    # Formats plain text with alignment (no style preservation).
+    #
+    # text              - plain text to format
+    # width             - target width
+    # align             - alignment (left, right, center, default: left)
+    # ellipsisThreshold - threshold for ellipsis
+    # preserveStyles    - whether to preserve styles
+    #
+    # Returns formatted text with proper alignment and truncation.
+    
+    # Style preservation
+    if {$preserveStyles} {
+        set visible_text [zesty::extractVisibleText $text]
+    } else {
+        set visible_text $text
+    }
+    
+    set visible_length [zesty::strLength $visible_text]
+
+    if {$visible_length > $width} {
+        if {$preserveStyles} {
+            if {$width > $ellipsisThreshold} {
+                # Preserving styled tags and add "..."
+                return [zesty::smartTruncateStyledText $text [expr {$width - 3}] "true"]
+            } else {
+                # Simply truncate preserving tags
+                return [zesty::smartTruncateStyledText $text $width "false"]
+            }
+        } else {
+            if {$width > $ellipsisThreshold} {
+                return "[string range $text 0 $width-4]..."
+            } else {
+                return [string range $text 0 $width-1]
+            }
+        }
+    }
+    
+    # Text alignment.
+    return [zesty::alignText $text $width $align]
 }
