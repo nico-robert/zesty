@@ -472,58 +472,52 @@ proc zesty::buildContentLineWithVerticalTitle {
     #
     # Returns formatted content line with title character.
     set result ""
+    set padded_content [zesty::buildPaddedContent \
+        $line_info $box_content_width $paddingX $content_align \
+    ]
 
     if {$side eq "w"} {
         # Title replaces left border (west)
         append result $char
-
-        # Left padding
-        if {$paddingX > 0} {
-            append result [string repeat " " $paddingX]
-        }
-
-        # Aligned content
-        set aligned_line [zesty::alignText \
-            [dict get $line_info original_line] \
-            $box_content_width \
-            $content_align
-        ]
-        append result $aligned_line
-
-        # Right padding
-        if {$paddingX > 0} {
-            append result [string repeat " " $paddingX]
-        }
-
+        append result $padded_content
         # Normal right border
         append result $vertical
     } else {
         # Normal left border
         append result $vertical
-
-        # Left padding
-        if {$paddingX > 0} {
-            append result [string repeat " " $paddingX]
-        }
-
-        # Aligned content
-        set aligned_line [zesty::alignText \
-            [dict get $line_info original_line] \
-            $box_content_width \
-            $content_align
-        ]
-        append result $aligned_line
-
-        # Right padding
-        if {$paddingX > 0} {
-            append result [string repeat " " $paddingX]
-        }
-
+        append result $padded_content
         # Title replaces right border (east)
         append result $char
     }
 
     append result "\n"
+    return $result
+}
+
+proc zesty::buildPaddedContent {line_info box_content_width paddingX content_align} {
+    # Builds the inner part of a box line: padding + aligned content + padding.
+    #
+    # line_info         - content line information dictionary
+    # box_content_width - content area width
+    # paddingX          - horizontal padding
+    # content_align     - content alignment
+    #
+    # Returns the padded and aligned content string.
+    set result ""
+    if {$paddingX > 0} {
+        append result [string repeat " " $paddingX]
+    }
+
+    set aligned_line [zesty::alignText \
+        [dict get $line_info original_line] \
+        $box_content_width \
+        $content_align
+    ]
+    append result $aligned_line
+
+    if {$paddingX > 0} {
+        append result [string repeat " " $paddingX]
+    }
     return $result
 }
 
@@ -564,20 +558,8 @@ proc zesty::buildBoxWithoutTitle {
     # Content lines
     foreach line_info $processed_lines {
         append result $vertical
-        if {$paddingX > 0} {
-            append result [string repeat " " $paddingX]
-        }
-
-        set aligned_line [zesty::alignText \
-            [dict get $line_info original_line] \
-            $box_content_width \
-            $content_align
-        ]
-        append result $aligned_line
-
-        if {$paddingX > 0} {
-            append result [string repeat " " $paddingX]
-        }
+        append result [zesty::buildPaddedContent $line_info \
+            $box_content_width $paddingX $content_align]
         append result $vertical
         append result "\n"
     }
