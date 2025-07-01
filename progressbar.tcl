@@ -31,16 +31,16 @@ oo::class create zesty::Bar {
         # Initialize progress bar with configurable options.
         #
         # args - configuration options in key-value pairs:
-        #   -minColumnWidth          - minimum column width (default: 5)
-        #   -minBarWidth             - minimum progress bar width (default: 10)
-        #   -ellipsisThreshold       - threshold for ellipsis display (default: 4)
-        #   -barChar                 - character for progress bar fill (default: "━")
-        #   -bgBarChar               - character for progress bar background (default: "━")
+        #   -minColumnWidth          - minimum column width
+        #   -minBarWidth             - minimum progress bar width
+        #   -ellipsisThreshold       - threshold for ellipsis display
+        #   -barChar                 - character for progress bar fill
+        #   -bgBarChar               - character for progress bar background
         #   -leftBarDelimiter        - left delimiter for progress bar
         #   -rightBarDelimiter       - right delimiter for progress bar
-        #   -indeterminateBarStyle   - animation style (bounce, pulse, wave)
-        #   -spinnerFrequency        - spinner update frequency in ms (default: 100)
-        #   -indeterminateSpeed      - animation speed (default: -2)
+        #   -indeterminateBarStyle   - animation style for indeterminate mode
+        #   -spinnerFrequency        - spinner update frequency in ms
+        #   -indeterminateSpeed      - animation speed
         #   -setColumns              - custom column configuration
         #   -colorBarChar            - color for progress bar fill
         #   -colorBgBarChar          - color for progress bar background
@@ -116,6 +116,9 @@ oo::class create zesty::Bar {
     }
     
     destructor {
+        # Cleanup progress bar system.
+        #
+        # Returns nothing
         classvar BARINSTANCE
         classvar ALLTASKS
         classvar TASK_POSITION
@@ -164,7 +167,7 @@ oo::class create zesty::Bar {
         #
         # Returns: nothing.
         if {![dict exists $_column_configs $column_num]} {
-            zesty::throwError "Column: '$column_num' does not exist."
+            error "zesty(error): Column: '$column_num' does not exist."
         }
         dict set _header_configs $column_num $data
         
@@ -180,7 +183,7 @@ oo::class create zesty::Bar {
         # Returns: nothing.
 
         if {![dict get $_options headers show]} {
-            zesty::throwError "Headers are not enabled"
+            error "zesty(error): Headers are not enabled"
         }
 
         foreach {key value} $config {
@@ -237,7 +240,8 @@ oo::class create zesty::Bar {
                 zesty::validateKeyValuePairs "data" $data
                 
                 if {![dict exists $data name]} {
-                    zesty::throwError "Error: header configuration must contain 'name' key"
+                    error "zesty(error): header configuration\
+                        must contain 'name' key"
                 }
 
                 set header_text [dict get $data name]
@@ -248,9 +252,7 @@ oo::class create zesty::Bar {
                     set align [dict get $data align]
                 }
 
-                if {$align ni {left center right}} {
-                    zesty::throwError "Align value should be 'left', 'center' or 'right'"
-                }
+                zesty::validValue {} $header_text "formatAlign" $align
                 
                 # Special case for progress bar
                 if {[dict get $config type] eq "zBar"} {
@@ -376,7 +378,7 @@ oo::class create zesty::Bar {
             }
             "zSpinner" {
                 dict set _column_configs $index visible 1
-                dict set _column_configs $index width 4
+                dict set _column_configs $index width 3
                 dict set _column_configs $index type $type
                 dict set _column_configs $index align center
                 dict set _column_configs $index spinnerStyle "dots"
@@ -390,8 +392,8 @@ oo::class create zesty::Bar {
                     dict set _column_configs $index align left
                 } else {
                     # Unknown type
-                    zesty::throwError "A command must be associated\
-                                        with '$type' column type."
+                    error "zesty(error): A command must be associated\
+                        with '$type' column type."
                 }
             }
         }
@@ -453,11 +455,11 @@ oo::class create zesty::Bar {
         
         # Using string length here because we want character length
         # to ensure our string is exactly $width characters
-        set actual_length [string length $spinner_text]
+        set actual_length [zesty::strLength $spinner_text]
         
         if {$actual_length > $width} {
             # Truncate if too long
-            set spinner_text [string range $spinner_text 0 [expr {$width - 1}]]
+            set spinner_text [string range $spinner_text 0 $width-1]
         } elseif {$actual_length < $width} {
             # Add spaces if too short
             append spinner_text [string repeat " " [expr {$width - $actual_length}]]
@@ -487,7 +489,7 @@ oo::class create zesty::Bar {
                 set first_elem [lindex $column 0]
                 
                 if {$first_elem ne "zSeparator"} {
-                    zesty::throwError "Column '$num_col' should be a type 'zSeparator'"
+                    error "zesty(error): Column '$num_col' should be a type 'zSeparator'"
                 }
                 # Format {zSeparator |} - separator with specified character
                 set separator_char [lindex $column 1]
@@ -569,40 +571,40 @@ oo::class create zesty::Bar {
         }
 
         if {![dict exists $_column_configs $num]} {
-            zesty::throwError "Column '$num' does not exist."
+            error "zesty(error): Column '$num' does not exist."
         }
         
         # Validate args
         zesty::validateKeyValuePairs "args" $args
-        
+
         foreach {key value} $args {
             switch -exact -- $key {
-                -visible {dict set _column_configs $num visible $value}
+                -visible {
+                    zesty::validValue {} $key "formatVBool" $value
+                    dict set _column_configs $num visible $value
+                }
                 -width   {
-                    zesty::isPositiveIntegerValue $key $value 1
+                    zesty::validValue {} $key "formatMCWidth" $value
                     dict set _column_configs $num width $value
                 }
                 -type   {dict set _column_configs $num type $value}
                 -format {dict set _column_configs $num format $value}
                 -align  {
-                    if {$value ni {"left" "right" "center"}} {
-                        zesty::throwError "align must be one of: left, right, center"
-                    }
+                    zesty::validValue {} $key "formatAlign" $value
                     dict set _column_configs $num align $value
                 } 
                 -spinnerStyle {
                     if {![dict exists $::zesty::spinnerstyles $value]} {
-                        zesty::throwError "spinnerStyle must be one of:\
+                        error "zesty(error): spinnerStyle must be one of:\
                         [join [dict keys $::zesty::spinnerstyles] ","]"
                     }
                     dict set _column_configs $num spinnerStyle $value
                 }
                 -style {
-                    zesty::validateKeyValuePairs "$key" $value
-
+                    zesty::validValue {} $key "formatStyle" $value
                     dict set _column_configs $num style $value
                 }
-                default  {zesty::throwError "Option '$key' not supported"}
+                default  {error "zesty(error): Column option '$key' not supported"}
             }
         }
 
@@ -623,54 +625,20 @@ oo::class create zesty::Bar {
         # Returns nothing.
  
         if {[dict exists $_column_configs $num]} {
-            zesty::throwError "Column $num already exists"
+            error "zesty(error): Column '$num' already exists"
         }
-        
-        # Validate args
-        zesty::validateKeyValuePairs "args" $args
 
         dict set _column_configs $num visible 1
         dict set _column_configs $num width 20
         dict set _column_configs $num align left
         
-        foreach {key value} $args {
-            switch -exact -- $key {
-                -visible {dict set _column_configs $num visible $value}
-                -width {
-                    zesty::isPositiveIntegerValue $key $value 1
-                    dict set _column_configs $num width $value
-                }
-                -type   {dict set _column_configs $num type $value}
-                -format {dict set _column_configs $num format $value}
-                -align  {
-                    if {$value ni {"left" "right" "center"}} {
-                        zesty::throwError "align must be one of: left, right, center"
-                    }
-                    dict set _column_configs $num align $value
-                }
-                -spinnerStyle {
-                    if {![dict exists $::zesty::spinnerstyles $value]} {
-                        zesty::throwError "spinnerStyle must be one of:\
-                              [join [dict keys $::zesty::spinnerstyles] ","]"
-                    }
-                    dict set _column_configs $num spinnerStyle $value
-                }
-                -style {
-                    zesty::validateKeyValuePairs "$key" $value
-
-                    dict set _column_configs $num style $value
-                }
-                default  {zesty::throwError "Option '$key' not supported"}
-            }
-        }
+        my configureColumn $num {*}$args
         
         if {![dict exists $_column_configs $num type]} {
-            zesty::throwError "Column type must be specified with -type option"
+            error "zesty(error): Column 'type' must be specified\
+                with '-type' option"
         }
 
-        set _has_spinner_column [my HasSpinnerColumn]
-        set _cache_valid 0  ;# Invalidate cache
-        
         return {}
     }
 
@@ -712,26 +680,22 @@ oo::class create zesty::Bar {
             switch -exact -- $key {
                 -name  {dict set _tasks $task_id description $value}
                 -total {
-                    zesty::isPositiveIntegerValue $key $value
+                    zesty::validValue {} $key "formatTTask" $value
                     dict set _tasks $task_id total $value
                 }
                 -completed {
-                    zesty::isPositiveIntegerValue $key $value
+                    zesty::validValue {} $key "formatCTask" $value
                     dict set _tasks $task_id completed $value
                 }
                 -mode  {
-                    if {$value ni {"determinate" "indeterminate"}} {
-                        zesty::throwError "mode must be 'determinate' or 'indeterminate'"
-                    }
+                    zesty::validValue {} $key "formatIBMode" $value
                     dict set _tasks $task_id mode $value
                 }
                 -animStyle {
-                    if {$value ni {"bounce" "pulse" "wave"}} {
-                        zesty::throwError "'$key' must be one of: bounce, pulse or wave."
-                    }
+                    zesty::validValue {} $key "formatIBStyle" $value
                     dict set _tasks $task_id animStyle $value
                 }
-                default {zesty::throwError "Option '$key' not supported"}
+                default {error "zesty(error): Task option '$key' not supported"}
             }
         }
         
@@ -771,25 +735,29 @@ oo::class create zesty::Bar {
         foreach {key value} $args {
             switch -- $key {
                 -total {
-                    zesty::isPositiveIntegerValue $key $value
+                    if {[catch {zesty::validValue {} $key "formatTTask" $value} err]} {
+                        zesty::throwError $err
+                    }
                     dict set _tasks $task_id total $value
                 }
                 -completed {
-                    zesty::isPositiveIntegerValue $key $value
+                    if {[catch {zesty::validValue {} $key "formatCTask" $value} err]} {
+                        zesty::throwError $err
+                    }
                     dict set _tasks $task_id completed $value
                     dict set _tasks $task_id mode "determinate"
                 }
                 -advance {
                     if {![string is integer -strict $value]} {
-                        zesty::throwError "advance must be an integer"
+                        zesty::throwError "'$key' must be an integer"
                     }
                     dict set _tasks $task_id completed [expr {
                         [dict get $_tasks $task_id completed] + $value
                     }]
                 }
                 -mode  {
-                    if {$value ni {"determinate" "indeterminate"}} {
-                        zesty::throwError "mode must be 'determinate' or 'indeterminate'"
+                    if {[catch {zesty::validValue {} $key "formatIBMode" $value} err]} {
+                        zesty::throwError $err
                     }
                     dict set _tasks $task_id mode $value
                 }
@@ -852,7 +820,7 @@ oo::class create zesty::Bar {
         #
         # Returns nothing.
         if {![dict exists $_tasks $task_id]} {
-            zesty::throwError "Task ID $task_id does not exist."
+            zesty::throwError "Task ID '$task_id' does not exist."
         }
 
         my update $task_id -advance $steps
@@ -1131,6 +1099,7 @@ oo::class create zesty::Bar {
         # pattern_size - size of wave pattern (default: 6)
         #
         # Returns animated bar with wave pattern moving left to right.
+
         set ld [dict get $_options leftBarDelimiter]
         set rd [dict get $_options rightBarDelimiter]
         
@@ -1207,7 +1176,7 @@ oo::class create zesty::Bar {
         ]
         
         # Rest of code remains same but with addition of align parameter
-        # to each FormatTextWithStyle call
+        # to each FormatText call
         switch -exact -- $key {
             "zSeparator" {
                 # Handle zSeparator
@@ -1216,7 +1185,7 @@ oo::class create zesty::Bar {
                     set sep_char [dict get $_column_configs $num char]
                 }
                 # Repeat character to fill width (usually 1)
-                return [my FormatTextWithStyle $sep_char $width $align]
+                return [my FormatText $sep_char $width $align]
             }
             "zName" {
                 set result [dict get $_tasks $task_id description]
@@ -1228,7 +1197,7 @@ oo::class create zesty::Bar {
                     set result [my ApplyFormat $dictvalue $formatCmd]
                 }
 
-                return [my FormatTextWithStyle $result $width $align]
+                return [my FormatText $result $width $align]
             }
             "zCount" {
                 if {[dict get $_tasks $task_id mode] eq "indeterminate"} {
@@ -1238,7 +1207,7 @@ oo::class create zesty::Bar {
                         dict set dictvalue result $result
                         set result [my ApplyFormat $dictvalue $formatCmd]
                     }
-                    return [my FormatTextWithStyle $result $width $align]
+                    return [my FormatText $result $width $align]
 
                 } else {
                     set completed [dict get $_tasks $task_id completed]
@@ -1251,7 +1220,7 @@ oo::class create zesty::Bar {
                         set result [my ApplyFormat $dictvalue $formatCmd]
                     }
 
-                    return [my FormatTextWithStyle $result $width $align]
+                    return [my FormatText $result $width $align]
                 }
             }
             "zBar" {
@@ -1290,7 +1259,7 @@ oo::class create zesty::Bar {
                     } else {
                         set result "-"
                     }
-                    return [my FormatTextWithStyle $result $width $align]
+                    return [my FormatText $result $width $align]
 
                 } else {
                     # Apply format if defined for custom commands too
@@ -1301,7 +1270,7 @@ oo::class create zesty::Bar {
                     } else {
                         set result [my ApplyFormat $dictvalue "%.0f%%"]
                     }
-                    return [my FormatTextWithStyle $result $width $align]
+                    return [my FormatText $result $width $align]
                 }
             }
             "zSpinner" {
@@ -1318,7 +1287,7 @@ oo::class create zesty::Bar {
                     set result [my ApplyFormat $dictvalue $formatCmd]
                 }
                 
-                return [my FormatTextWithStyle $result $width $align]
+                return [my FormatText $result $width $align]
             }
             "zRemaining" {
                 set result [my formatTime [my remainingTime $task_id]]
@@ -1330,7 +1299,7 @@ oo::class create zesty::Bar {
                     set result [my ApplyFormat $dictvalue $formatCmd]
                 }
                 
-                return [my FormatTextWithStyle $result $width $align]
+                return [my FormatText $result $width $align]
 
             }
             default {
@@ -1343,7 +1312,7 @@ oo::class create zesty::Bar {
                     [dict get $_tasks $task_id] \
                 ]]
 
-                return [my FormatTextWithStyle $result $width $align]
+                return [my FormatText $result $width $align]
             }
         }
     }
@@ -1353,7 +1322,7 @@ oo::class create zesty::Bar {
         # Supports both traditional format
         # strings and apply command specifications.
         #
-        # dictvalue - dictionary containing values to format
+        # dictvalue   - dictionary containing values to format
         # format_spec - format specification (format string or apply command)
         #
         # Returns formatted string.
@@ -1375,114 +1344,26 @@ oo::class create zesty::Bar {
         }
     }
 
-    method FormatTextWithStyle {text width align} {
+    method FormatText {text width align} {
         # Formats text with style preservation and alignment.
         #
         # text  - text to format (may contain style tags)
         # width - target width
-        # align - alignment (left, right, center)
+        # align - alignment type
         #
         # Returns formatted text with proper alignment and truncation.
-
-        set match [string match {*<s*</s>*} $text]
 
         # Extract visible text to calculate true length
-        if {$match} {
-            set visible_text [zesty::extractVisibleText $text]
-        } else {
-            set visible_text $text
-        }
+        set preserveStyles [string match {*<s*</s>*} $text]
         
-        set visible_length [string length $visible_text]
-        
-        # Handle text too long
-        if {$visible_length > $width} {
-            if {$match} {
-                if {$width > [dict get $_options ellipsisThreshold]} {
-                    # Intelligently truncate preserving tags and add "..."
-                    return [zesty::smartTruncateStyledText $text [expr {$width - 3}] true]
-                } else {
-                    # Simply truncate preserving tags
-                    return [zesty::smartTruncateStyledText $text $width false]
-                }
-            } else {
-                if {$width > [dict get $_options ellipsisThreshold]} {
-                    return "[string range $text 0 [expr {$width - 3}]]..."
-                } else {
-                    return [string range $text 0 $width]
-                }
-            }
-        } else {
-            # Text fits in available width
-            # Calculate necessary padding
-            set padding [expr {$width - $visible_length}]
-            
-            switch -exact -- $align {
-                "left" {
-                    # Add spaces at end
-                    return "${text}[string repeat " " $padding]"
-                }
-                "right" {
-                    # Add spaces at beginning
-                    return "[string repeat " " $padding]${text}"
-                }
-                "center" {
-                    # Distribute spaces on each side
-                    set left_pad [expr {int($padding / 2)}]
-                    set right_pad [expr {$padding - $left_pad}]
-                    return "[string repeat " " $left_pad]${text}[string repeat " " $right_pad]"
-                }
-                default {
-                    # Default: left alignment
-                    return "${text}[string repeat " " $padding]"
-                }
-            }
-        }
-    }
-
-    method FormatText {text width {align "left"}} {
-        # Formats plain text with alignment (no style preservation).
-        #
-        # text  - plain text to format
-        # width - target width
-        # align - alignment (left, right, center, default: left)
-        #
-        # Returns formatted text with proper alignment and truncation.
-
-        if {[string length $text] > $width} {
-            if {$width > [dict get $_options ellipsisThreshold]} {
-                return "[string range $text 0 [expr {$width - 4}]]..."
-            } else {
-                return [string range $text 0 $width]
-            }
-        } else {
-            # Apply alignment according to value
-            switch -exact -- $align {
-                "left" {
-                    return [format "%-${width}s" $text]
-                }
-                "right" {
-                    return [format "%${width}s" $text]
-                }
-                "center" {
-                    set padding   [expr {$width - [string length $text]}]
-                    set left_pad  [expr {int($padding / 2)}]
-                    set right_pad [expr {$padding - $left_pad}]
-                    set centered  [string repeat " " $left_pad]
-                    append centered $text
-                    append centered [string repeat " " $right_pad]
-                    return $centered
-                }
-                default {
-                    # Default: left alignment
-                    return [format "%-${width}s" $text]
-                }
-            }
-        }
+        return [zesty::formatTextWithAlignment $text $width $align \
+            $preserveStyles \
+            [dict get $_options ellipsisThreshold] \
+        ]
     }
 
     method CalculateColumnWidths {} {
-        # Calculates optimal column widths for current terminal size.
+        # Calculates column widths for current terminal size.
         #
         # Returns dictionary mapping column numbers to calculated widths.
  
@@ -1506,7 +1387,7 @@ oo::class create zesty::Bar {
             zesty::throwError "No visible columns"
         }
 
-        # Check if everything fits with configured widths (REALLY OPTIMAL)
+        # Check if everything fits with configured widths.
         set total_requested_width 0
         set spaces_between_columns [expr {[llength $visible_columns] - 1}]
         
@@ -1675,7 +1556,7 @@ oo::class create zesty::Bar {
 
         # Check if task exists
         if {![dict exists $_tasks $task_id]} {
-            zesty::throwError "Task ID $task_id does not exist."
+            zesty::throwError "Task ID '$task_id' does not exist."
         }
         
         # Check if column exists and is visible
@@ -1683,7 +1564,8 @@ oo::class create zesty::Bar {
             ![dict exists $_column_configs $column_num] || 
             ![dict get $_column_configs $column_num visible]
         } {
-            zesty::throwError "Column $column_num does not exist or is not visible."
+            zesty::throwError "Column '$column_num' does not\
+                exist or is not visible."
         }
 
         # Calculate column widths
@@ -1734,7 +1616,9 @@ oo::class create zesty::Bar {
         # Display column content
         # Clear only the part to display
         if {[dict get $_column_configs $column_num type] ni {
-            "zCount" "zPercent" "zBar" "zElapsed" "zRemaining" "zSpinner" "zSeparator" "zName"} || 
+            "zCount" "zPercent" "zBar" "zElapsed" "zRemaining" 
+            "zSpinner" "zSeparator" "zName"
+        } || 
             ([dict exists $_column_configs $column_num format] &&
             [dict get $_column_configs $column_num format] ne "")
         } {
@@ -1802,7 +1686,8 @@ oo::class create zesty::Bar {
         # Continue loop if at least one spinner is active
         if {$active} {
             set time [dict get $_options spinnerFrequency]
-            set _spinner_timer_id [after $time [list [self] updateSpinners]]
+            set _spinner_timer_id [after $time \
+            [list [self] updateSpinners]]
         }
         
         return {}
@@ -1850,7 +1735,8 @@ oo::class create zesty::Bar {
         
         # Continue loop if at least one task is active
         if {$active} {
-            set _time_timer_id [after 30 [list [self] updateTimeColumns]]
+            set _time_timer_id [after 30 \
+            [list [self] updateTimeColumns]]
         }
         
         return {}
@@ -1896,7 +1782,8 @@ oo::class create zesty::Bar {
         
         # Continue loop if at least one task is active
         if {$active} {
-            set _count_timer_id [after 30 [list [self] updateCountColumn]]
+            set _count_timer_id [after 30 \
+            [list [self] updateCountColumn]]
         }
         
         return {}
@@ -1948,7 +1835,8 @@ oo::class create zesty::Bar {
         
         if {$active} {
             # Fast timer for smooth bar animation
-            set _indeterminate_timer_id [after 50 [list [self] updateIndeterminateBars]]
+            set _indeterminate_timer_id [after 50 \
+             [list [self] updateIndeterminateBars]]
         }
         
         return {}
@@ -1996,7 +1884,8 @@ oo::class create zesty::Bar {
         }
 
         if {$active} {
-            set _custom_timer_id [after 100 [list [self] updateCustomProcs]]
+            set _custom_timer_id [after 100 \
+            [list [self] updateCustomProcs]]
         }
         
         return {}
