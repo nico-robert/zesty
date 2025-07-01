@@ -22,6 +22,7 @@ proc zesty::validValue {type key validvalue value} {
 
     switch -exact -- $validvalue {
 
+        formatVKVP -
         formatStyle {
             zesty::validateKeyValuePairs $key $value
         }
@@ -38,6 +39,13 @@ proc zesty::validValue {type key validvalue value} {
                 error "zesty(error): value '$value' should be\
                     'left', 'right', or 'center' for\
                     this key '$key'."
+            }
+        }
+
+        formatIBMode {
+            if {$value ni {"determinate" "indeterminate"}} {
+                error "zesty(error): '$key' must be 'determinate'\
+                    or 'indeterminate'"
             }
         }
 
@@ -91,6 +99,8 @@ proc zesty::validValue {type key validvalue value} {
                     for this key '$key'."
             }
         }
+        formatTTask -
+        formatCTask -
         formatMVL -
         formatPad {
             zesty::isPositiveIntegerValue $key $value
@@ -151,10 +161,6 @@ proc zesty::validValue {type key validvalue value} {
             if {[zesty::strLength $value] != 1} {
                 error "zesty(error): This 'key' should be one character."
             }
-        }
-
-        formatVKVP {
-            zesty::validateKeyValuePairs $key $value
         }
 
         formatVBool {
