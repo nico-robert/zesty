@@ -53,9 +53,9 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
         lassign $content_indices content_start content_end
         
         # Extract parts
-        set before [string range $result $current_pos [expr {$match_start - 1}]]
+        set before     [string range $result $current_pos $match_start-1]
         set attributes [string range $result $attr_start $attr_end]
-        set content [string range $result $content_start $content_end]
+        set content    [string range $result $content_start $content_end]
         
         # Add text before tag (with base style if defined)
         append processed_text $before
@@ -288,7 +288,7 @@ proc zesty::parseStyleDictToXML {text style_dict} {
             
             # Add text before tag (with general style)
             if {$current_pos < $match_start} {
-                set before_text [string range $text $current_pos [expr {$match_start - 1}]]
+                set before_text [string range $text $current_pos $match_start-1]
                 if {$before_text ne ""} {
                     set attrs_list {}
                     dict for {key value} $general_attrs {
