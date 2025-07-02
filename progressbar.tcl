@@ -529,7 +529,7 @@ oo::class create zesty::Bar {
         set _isWindows [zesty::isWindows]
 
         if {$_isWindows} {
-            set _handle [zesty::GetStdOutHandle]
+            set _handle [zesty::win32::getStdOutHandle]
         }
 
         lassign [zesty::getTerminalSize $_handle] _term_width _term_height
@@ -2019,7 +2019,7 @@ oo::class create zesty::Bar {
         if {$_isWindows} {
             # Use Windows API
             if {$_handle ne "null"} {
-                zesty::SetConsoleCursorPosition $_handle $x $y
+                zesty::win32::setConsoleCursorPosition $_handle $x $y
             }
         } else {
             # Use ANSI sequences
@@ -2103,7 +2103,7 @@ oo::class create zesty::Bar {
                 puts ""
             }
 
-            if {$_isWindows && ![zesty::isNewTerminal]} {
+            if {$_isWindows && ![zesty::win32::isNewTerminal]} {
                 set INITIAL_CURSOR_POSITION [list $x $initial_y] 
                 if {$initial_y >= $_term_height} {
                     my PositionCursor 0 [expr {$initial_y + 1}]

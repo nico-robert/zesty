@@ -24,7 +24,7 @@ proc zesty::getTermHeight {handle} {
     # Returns terminal height in rows.
     if {[catch {
         if {[zesty::isWindows] && ($handle ne "null")} {
-            set height [zesty::getConsoleHeight $handle]
+            set height [zesty::win32::getConsoleHeight $handle]
         } else {
             # Unix/Linux
             set null "2>/dev/null"
@@ -32,11 +32,12 @@ proc zesty::getTermHeight {handle} {
                 set height [lindex $sttyOut 0]
             } elseif {![catch {exec tput lines $null} height]} {
             } else {
-                zesty::throwError "Impossible to find height for systems Unix/Linux"
+                error "zesty(error): Impossible to find the terminal\ 
+                    height for systems Unix/Linux"
             }
         }
     } msg]} {
-        zesty::throwError $msg
+        error "zesty(error): $msg"
     }
 
     return $height
@@ -50,7 +51,7 @@ proc zesty::getTermWidth {handle} {
     # Returns terminal width in columns.
     if {[catch {
         if {[zesty::isWindows] && ($handle ne "null")} {
-            set width [zesty::getConsoleWidth $handle]
+            set width [zesty::win32::getConsoleWidth $handle]
         } else {
             # Unix/Linux
             set null "2>/dev/null"
@@ -58,11 +59,12 @@ proc zesty::getTermWidth {handle} {
                 set width [lindex $sttyOut 1]
             } elseif {![catch {exec tput cols $null} width]} {
             } else {
-                zesty::throwError "Impossible to find width for systems Unix/Linux"
+                error "zesty(error): Impossible to find the terminal\ 
+                    width for systems Unix/Linux"
             }
         }
     } msg]} {
-        zesty::throwError $msg
+        error "zesty(error): $msg"
     }
             
     return $width
@@ -76,7 +78,7 @@ proc zesty::getTerminalSize {{handle "null"}} {
     # Returns list containing terminal width and height in
     # characters.
     if {[zesty::isWindows] && ($handle eq "null")} {
-        set handle [zesty::GetStdOutHandle]   
+        set handle [zesty::win32::getStdOutHandle]   
     }
     return [list \
         [zesty::getTermWidth $handle] \
@@ -97,7 +99,7 @@ proc zesty::getCursorPosition {handle} {
             zesty::throwError "Windows console 'handle' not available."
         }
 
-        return [zesty::getConsoleCursorPosition $handle]
+        return [zesty::win32::getConsoleCursorPosition $handle]
         
     } else {
         set old_tty_settings ""
@@ -120,7 +122,8 @@ proc zesty::getCursorPosition {handle} {
             if {[regexp {\[(\d+);(\d+)R} $response -> y x]} {
                 return [list $x $y]
             } else {
-                zesty::throwError "Could not parse cursor position response: $response"
+                zesty::throwError "Could not parse cursor position\
+                    response: $response"
             }
         } finally {
             if {$old_tty_settings ne ""} {
@@ -346,7 +349,7 @@ proc zesty::hexToRGB {hex} {
     # or throws error if hex format is invalid.
 
     if {![zesty::isValidHex $hex]} {
-        zesty::throwError "Invalid hex format: $hex"
+        error "zesty(error): Invalid hex format: $hex"
     }
 
     # Remove # if present
@@ -474,7 +477,8 @@ proc zesty::findClosestColor {target_hex} {
     variable tcolor
 
     if {![info exists tcolor]} {
-        zesty::throwError "zesty::tcolor not available"
+        error "zesty(error): No 'zesty::tcolor' variable\
+            available."
     }
     
     set target_rgb [zesty::hexToRGB $target_hex]
@@ -591,7 +595,8 @@ proc zesty::getColorHex {color} {
 
     # Check if zesty::tcolor exists
     if {![info exists tcolor]} {
-        zesty::throwError "Warning: zesty::tcolor not found."
+        error "zesty(error): No 'zesty::tcolor' variable\
+            available."
     }
 
     set code [zesty::getColorCode $color]
@@ -644,7 +649,7 @@ proc zesty::SetTerminalTitle {text} {
     #
     # Returns nothing.
     if {[zesty::isWindows]} {
-        zesty::SetTitle $text
+        zesty::win32::setTitle $text
     } else {
         puts -nonewline "\033]0;$text\007"
         flush stdout
@@ -794,10 +799,10 @@ proc zesty::def {d key args} {
                         set ltype  [lsearch $lsplit *-type*]
                         set lvalid [lsearch $lsplit *-validvalue*]
                         if {$ltype  < 0} {
-                            zesty::throwError "Missing 'type' for '$lkey'"
+                            error "zesty(error): Missing 'type' for '$lkey'"
                         }
                         if {$lvalid < 0} {
-                            zesty::throwError "Missing 'validvalue' for '$lkey'"
+                            error "zesty(error): Missing 'validvalue' for '$lkey'"
                         }
                         lassign [zesty::findWithBounds $lines $j] start_idx end_idx next_j
                         
@@ -821,7 +826,7 @@ proc zesty::def {d key args} {
                 }
                 set default $temp_dict
             }
-            default {zesty::throwError "Unknown key '$k' specified"}
+            default {error "zesty(error): Unknown key '$k' specified"}
         }
     }
     
