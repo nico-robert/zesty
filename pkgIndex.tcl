@@ -7,17 +7,8 @@ package ifneeded zesty 0.1 [list apply {dir {
     source -encoding utf-8 [file join $dir zesty.tcl]
     
     if {[platform::generic] eq "win32-x86_64"} {
-        package req registry
-
-        if {![catch {package req twapi}]} {
-            set file twin32.tcl
-        } elseif {![catch {package req cffi 2.0}]} {
-            set file cwin32.tcl
-        } else {
-            error "package 'twapi' or 'cffi >= 2.0'\
-            should be present for Windows platform"
-        }
-        source -encoding utf-8 [file join $dir $file]
+        package require registry
+        source -encoding utf-8 [file join $dir win32.tcl]
     }
 
     source -encoding utf-8 [file join $dir parse.tcl]
