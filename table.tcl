@@ -12,6 +12,7 @@ oo::class create zesty::Table {
     variable _termWidth
     variable _termHeight
     variable _col_index
+    variable _footer
 
     constructor {args} {
         # Initializes table with default options and detects terminal
@@ -25,7 +26,7 @@ oo::class create zesty::Table {
         # showEdge         - Show table edge
         # lines            - Show table lines
         # header           - Show table header
-        # footer           - Show table footer (not implemented yet)
+        # footer           - Show table footer
         # keyPgup          - Key for page up
         # keyPgdn          - Key for page down
         # keyQuit          - Key for quit
@@ -37,6 +38,7 @@ oo::class create zesty::Table {
         # Returns nothing.
         set _rows {}
         set _column_options {}
+        set _footer {}
         set _col_index -1
         set _isWindows  [zesty::isWindows]
         set size        [zesty::getTerminalSize]
@@ -69,8 +71,9 @@ oo::class create zesty::Table {
             style -validvalue formatStyle  -type any|none  -default ""
         }
         zesty::def _options "-footer"    -validvalue formatVKVP  -type struct -with {
-            show  -validvalue formatVBool  -type any       -default "true"
-            style -validvalue formatStyle  -type any|none  -default ""
+            show      -validvalue formatVBool  -type any       -default "true"
+            style     -validvalue formatStyle  -type any|none  -default ""
+            separator -validvalue formatVBool  -type any       -default "true"
         }
         zesty::def _options "-keyPgup"          -validvalue {}          -type str|num  -default "p"
         zesty::def _options "-keyPgdn"          -validvalue {}          -type str|num  -default "f"
@@ -508,6 +511,34 @@ oo::class create zesty::Table {
         }
 
         lappend _rows $row
+
+        return {}
+    }
+
+    method setFooter {args} {
+        # Sets footer data for the table.
+        #
+        # args - footer data as separate arguments for each column
+        #
+        # Returns nothing.
+
+        set numCols [dict size $_column_options]
+        set numArgs [llength $args]
+
+        # Ensure we don't have too many arguments
+        if {$numArgs > $numCols} {
+            error "zesty(error): Too many arguments provided\
+                '$numArgs' for '$numCols' columns"
+        }
+
+        # Pad with empty strings for missing columns
+        set footerData $args
+        while {[llength $footerData] < $numCols} {
+            lappend footerData ""
+        }
+
+        # Store footer data in class variable
+        set _footer $footerData
 
         return {}
     }
@@ -1365,7 +1396,7 @@ oo::class create zesty::Table {
         for {set i 0} {$i < $numCols} {incr i} {
             append bottomLine [string repeat [dict get $boxChars hl] [lindex $colWidths $i]]
 
-            if {$i < [expr {$numCols - 1}] && $lines_show} {
+            if {($i < [expr {$numCols - 1}]) && $lines_show} {
                 append bottomLine [dict get $boxChars tb]
             }
         }
@@ -1373,6 +1404,41 @@ oo::class create zesty::Table {
         append bottomLine [dict get $boxChars br]
 
         return "[zesty::parseStyleDictToXML $bottomLine $lines_style]\n"
+    }
+
+    method RenderFooterSeparator {colWidths boxChars} {
+        # Renders separator line before footer.
+        #
+        # colWidths - list of column widths
+        # boxChars  - dictionary of box characters
+        #
+        # Returns formatted separator string.
+
+        if {![dict get $_options footer separator]} {
+            return ""
+        }
+
+        set lines_style [dict get $_options lines style]
+        set lines_show [dict get $_options lines show]
+        set showEdge [dict get $_options showEdge]
+        set numCols [dict size $_column_options]
+
+        set sepLine ""
+        if {$showEdge} {
+            append sepLine [dict get $boxChars tlj]
+        }
+
+        for {set i 0} {$i < $numCols} {incr i} {
+            append sepLine [string repeat [dict get $boxChars hl] [lindex $colWidths $i]]
+            if {($i < [expr {$numCols - 1}]) && $lines_show} {
+                append sepLine [dict get $boxChars xc]
+            }
+        }
+        if {$showEdge} {
+            append sepLine [dict get $boxChars trj]
+        }
+
+        return "[zesty::parseStyleDictToXML $sepLine $lines_style]\n"
     }
 
     method RenderCaption {tableWidth} {
@@ -1400,6 +1466,102 @@ oo::class create zesty::Table {
         }
 
         return [zesty::parseStyleDictToXML $captionLine $caption_style]
+    }
+
+    method RenderFooter {colWidths boxChars} {
+        # Renders table footer row(s).
+        #
+        # colWidths - list of column widths
+        # boxChars  - dictionary of box characters
+        #
+        # Returns formatted footer string.
+
+        if {![dict get $_options footer show]} {
+            return ""
+        }
+
+        set result ""
+        set lines_style  [dict get $_options lines style]
+        set lines_show   [dict get $_options lines show]
+        set footer_style [dict get $_options footer style]
+        set numCols      [dict size $_column_options]
+        set pad          [dict get $_options padding]
+
+        # Get footer data from class variable
+        if {[llength $_footer] == 0} {
+            return ""
+        }
+
+        # Separate footer from data if enabled
+        if {[dict get $_options footer separator]} {
+            append result [my RenderFooterSeparator $colWidths $boxChars]
+        }
+
+        # Prepare footer cells with wrapping
+        set footerCells {}
+        set footerHeight 1
+
+        for {set i 0} {$i < $numCols} {incr i} {
+            set cellContent ""
+            if {$i < [llength $_footer]} {
+                set cellContent [lindex $_footer $i]
+            }
+
+            set colWidth [lindex $colWidths $i]
+            set availableWidth [expr {$colWidth - 2 * $pad}]
+
+            if {$availableWidth <= 0 || $cellContent eq ""} {
+                lappend footerCells [list " "]
+            } else {
+                set wrappedContent [zesty::wrapText $cellContent $availableWidth 0]
+                lappend footerCells $wrappedContent
+                set cellHeight [llength $wrappedContent]
+                if {$cellHeight > $footerHeight} {
+                    set footerHeight $cellHeight
+                }
+            }
+        }
+
+        # Display multi-line footer
+        for {set lineIdx 0} {$lineIdx < $footerHeight} {incr lineIdx} {
+            set footerLine ""
+            if {[dict get $_options showEdge]} {
+                append footerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
+            }
+
+            for {set colIdx 0} {$colIdx < $numCols} {incr colIdx} {
+                set colWidth [lindex $colWidths $colIdx]
+                set colContent ""
+
+                if {$lineIdx < [llength [lindex $footerCells $colIdx]]} {
+                    set colContent [lindex [lindex $footerCells $colIdx] $lineIdx]
+                }
+
+                set justify [dict get $_column_options $colIdx justify]
+                set padding [string repeat " " $pad]
+
+                if {$colContent eq ""} {
+                    set paddedContent [string repeat " " $colWidth]
+                } else {
+                    set paddedContent "$padding$colContent$padding"
+                    set paddedContent [zesty::alignText $paddedContent $colWidth $justify]
+                }
+
+                append footerLine [zesty::parseStyleDictToXML $paddedContent $footer_style]
+
+                if {$colIdx < [expr {$numCols - 1}] && $lines_show} {
+                    append footerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
+                }
+            }
+
+            if {[dict get $_options showEdge]} {
+                append footerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
+            }
+
+            append result "$footerLine\n"
+        }
+
+        return $result
     }
 
     method render {} {
@@ -1441,6 +1603,9 @@ oo::class create zesty::Table {
         # Data rows
         set processedRows [my ProcessRows $colWidths]
         append result [my RenderDataRows $processedRows $colWidths $boxChars]
+
+        # Footer
+        append result [my RenderFooter $colWidths $boxChars]
 
         # Bottom border
         append result [my RenderBottomBorder $tableWidth $boxChars]
