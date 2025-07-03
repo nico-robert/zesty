@@ -428,6 +428,29 @@ proc test_mixed_nowrap {} {
     $table destroy
 }
 
+proc test_footer {} {
+
+    zesty::echo "\n=== FOOTER DEMO ==="
+
+    set table [zesty::Table new \
+        -title {name "My Table" style {fg blue}} \
+        -footer {show true style {fg green} separator true}]
+
+    $table addColumn -name "Product"
+    $table addColumn -name "Price" -justify right
+    $table addColumn -name "Quantity" -justify center
+
+    $table addRow "Apples" "\$1.50" "10"
+    $table addRow "Oranges" "\$2.00" "15"
+    $table addRow "Bananas" "\$1.20" "20"
+
+    $table setFooter "Total:" "\$4.70" "45"
+
+    $table display
+    $table destroy
+
+}
+
 proc run_all_tests {} {
     # Run all demonstration functions
     test_basic_table
@@ -439,6 +462,7 @@ proc run_all_tests {} {
     test_table
     test_nowrap_truncation
     test_mixed_nowrap
+    test_footer
 }
 
 # Interactive test menu
@@ -456,7 +480,8 @@ proc interactive_menu {} {
     zesty::echo "10. Table" -filters {num {fg green}}
     zesty::echo "11. Text truncation with ellipsis" -filters {num {fg green}}
     zesty::echo "12. Mixed wrap/truncation strategies" -filters {num {fg green}}
-    zesty::echo "13. Run All Demos" -filters {num {fg green}}
+    zesty::echo "13. Footer" -filters {num {fg green}}
+    zesty::echo "14. Run All Demos" -filters {num {fg green}}
     zesty::echo "0. Exit" -filters {num {fg red}}
     
     zesty::echo -n "Enter choice (0-13): "
@@ -476,7 +501,8 @@ proc interactive_menu {} {
         10 { zesty::resetTerminal ; test_table }
         11 { zesty::resetTerminal ; test_nowrap_truncation }
         12 { zesty::resetTerminal ; test_mixed_nowrap }
-        13 { zesty::resetTerminal ; run_all_tests }
+        13 { zesty::resetTerminal ; test_footer }
+        14 { zesty::resetTerminal ; run_all_tests }
         0 { zesty::echo "Exiting..."; return }
         default { zesty::echo "Invalid choice. Please try again." }
     }
