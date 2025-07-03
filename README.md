@@ -179,6 +179,8 @@ args                  |Description
 |_-autoScroll_        | Enable auto-scrolling
 |_-pageScroll_        | Enable page scrolling
 |_-continuousScroll_  | Enable continuous scrolling
+|_-footer_            | Show table footer.   
+
 
 ### Boxes
 Create styled text boxes:
@@ -218,6 +220,16 @@ args                            |Description
     fg "#FF5733" ; # Hex colors
 }
 ```
+**zesty** uses XML-like tags for inline styling:
+```xml
+<!--
+Simple color or color with formatting.
+Tags can be nested and combined.
+-->
+<s fg=red>text</s>
+<s fg=blue bold=1>text</s>
+```
+
 _Refer to `colors.tcl` file for the complete 256-color palette specification and terminal capability detection._
 ## 👀 Examples :
 See the **[examples](/examples)** folder for all demos.
@@ -231,3 +243,13 @@ Inspired by modern CLI tools and libraries
 ## 🕙 Release :
 *  **15-Jun-2025** : 0.1
     - Initial release.
+*  **03-Jul-2025** : 0.2
+    - Improved `Windows` Terminal detection
+    - Enhanced args parsing.
+    - Merged `cwin32.tcl` and `twin32.tcl` into `win32.tcl`
+    - Adds _-encoding_ `utf-8` option to `source` command for   
+      compatibility with `Windows` Tcl8.6 support.
+    - Adds `common.tcl` file to facilitate common functions.
+    - Adds `footer` support for class `Table`.
+    - Major code refactoring.
+    - Fixes minor bugs.

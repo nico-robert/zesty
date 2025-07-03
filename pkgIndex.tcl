@@ -1,7 +1,7 @@
 # Copyright (c) 2025 Nicolas ROBERT.
 # Distributed under MIT license. Please see LICENSE for details.
 
-package ifneeded zesty 0.1 [list apply {dir {
+package ifneeded zesty 0.2 [list apply {dir {
     package require platform
 
     source -encoding utf-8 [file join $dir zesty.tcl]
