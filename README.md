@@ -53,7 +53,7 @@ set task [$bar addTask -name "Downloading..." -total 100]
 
 # Practical procedure for managing the Tcl event loop :
 zesty::loop -start 0 -end 100 -delay 50 {
-    $bar advance $task1 1
+    $bar advance $task 1
 }
 ```
 📋 Tables
