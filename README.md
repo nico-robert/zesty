@@ -12,7 +12,7 @@ Create beautiful command-line interfaces with styled text, progress bars, tables
 - 📦 Boxes - Multiple border styles, title positioning, padding.  
 - 🔧 JSON Decoder - Pretty-print JSON with syntax highlighting.
 
-## 🛠️ Requirements :
+## Requirements :
 - [Tcl](https://www.tcl.tk/) 8.6 or higher
 - Platform-specific requirements:
   - Windows: 
@@ -21,13 +21,13 @@ Create beautiful command-line interfaces with styled text, progress bars, tables
     - Terminal with ANSI escape sequence support
 - huddle::json package from [Tcllib](https://core.tcl-lang.org/tcllib/doc/trunk/embedded/index.md) (optional for JSON formatting)
 
-## 🎯 Cross-Platform :
+## Cross-Platform :
 - Windows, Linux, macOS support.
 > [!NOTE]  
 > Primary testing has been conducted on Windows (both Windows `Terminal.exe` and `cmd.exe`) and macOS. Linux compatibility is expected but may require additional validation.
-## 🚀 Quick Start :
 
-Echo
+## Quick Start :
+🎨 Echo
 ```tcl
 # Import echo command to avoid namespace qualification:
 namespace import zesty::echo
@@ -73,7 +73,7 @@ $table addRow "Mouse" "\$29" "125"
 
 $table display
 ```
-Boxes
+📦 Boxes
 ```tcl
 # Simple box with title
 echo [zesty::box \
@@ -82,7 +82,7 @@ echo [zesty::box \
     -padding 2
 ]
 ```
-JSON Formatting
+🔧 JSON Formatting
 ```tcl
 # Pretty-print JSON with syntax highlighting
 set json {{"name": "John", "age": 30, "active": true}}
@@ -98,9 +98,9 @@ echo [zesty::jsonDecode -json $json -showLinesNumber 1 -style {
     lineNum {fg 254 reverse 1}
 }]
 ```
-## 📖 Documentation :
+## Documentation :
 
-### Echo command
+### Echo command :
 The `zesty::echo` command provides styled console output:
 ```tcl
 zesty::echo text ?options?
@@ -113,8 +113,9 @@ zesty::echo text ?options?
 | _-n_           | No newline        
 | _-noreset_     | Don't reset formatting      
 | _-filters_     | Apply style filters (num, email, url)
- 
-###  Progress Bars
+
+### Progress Bars command :
+
 > [!IMPORTANT]    
 > The `zesty::Bar` class relies heavily on Tcl's event loop for rendering updates and animations. 
 This has critical implications for your application design.
@@ -157,7 +158,7 @@ set bar [zesty::Bar new ?options?]
 > [!TIP]    
 > You can create your own column types.   
 
-### Tables
+### Tables command :
 Create formatted tables with automatic sizing:
 ```tcl
 set table [zesty::Table new ?options?]
@@ -182,7 +183,7 @@ args                  |Description
 |_-footer_            | Show table footer.   
 
 
-### Boxes
+### Boxes command :
 Create styled text boxes:
 ```tcl
 zesty::box ?options?
@@ -193,12 +194,12 @@ args                            |Description
 |_-title_                       | title configuration
 |_-content_                     | content configuration
 |_-box_                         | box appearance settings
-|_-padding_                     | uniform padding
+|_-padding_                     | uniform padding (higher priority than paddingX and paddingY)
 |_-paddingX_                    | horizontal padding
 |_-paddingY_                    | vertical padding
 |_-formatCmdBoxMsgtruncated_    | truncation callback command
 
-### JSON decoder
+### JSON decoder command :
 The `zesty::jsonDecode` command formats JSON with syntax highlighting:
 ```tcl
 zesty::jsonDecode ?options?
@@ -211,7 +212,7 @@ args                            |Description
 |_-style_                       | styling specifications
 |_-showLinesNumber_             | whether to show line numbers
 
-### 🎨 Color support :  
+### Color support :  
 **zesty** supports multiple color formats:
 ```tcl
 -style {
@@ -231,16 +232,16 @@ Tags can be nested and combined.
 ```
 
 _Refer to `colors.tcl` file for the complete 256-color palette specification and terminal capability detection._
-## 👀 Examples :
+## Examples :
 See the **[examples](/examples)** folder for all demos.
 
-## 📄 License : 
+## License : 
 **zesty** is covered under the terms of the [MIT](LICENSE) license.
 
-## 🙏 Acknowledgments :
+## Acknowledgments :
 Inspired by modern CLI tools and libraries
 
-## 🕙 Release :
+## Changes :
 *  **15-Jun-2025** : 0.1
     - Initial release.
 *  **03-Jul-2025** : 0.2
