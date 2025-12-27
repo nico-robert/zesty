@@ -23,7 +23,7 @@ Create beautiful command-line interfaces with styled text, progress bars, tables
 
 ## Cross-Platform :
 - Windows, Linux, macOS support.
-> [!NOTE]  
+> [!CAUTION]  
 > Primary testing has been conducted on Windows (both Windows `Terminal.exe` and `cmd.exe`) and macOS. Linux compatibility is expected but may require additional validation.
 
 ## Quick Start :
