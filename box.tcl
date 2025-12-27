@@ -26,8 +26,11 @@ proc zesty::box {args} {
         style   -validvalue formatStyle       -type any|none  -default ""
         anchor  -validvalue formatTitleAnchor -type str       -default "nc"
     }
-    zesty::def options "-paddingX" -validvalue formatPad -type num  -default 1
-    zesty::def options "-paddingY" -validvalue formatPad -type num  -default 0
+
+    zesty::def options "-padding"  -validvalue formatPad -type num|none  -default ""
+    zesty::def options "-paddingX" -validvalue formatPad -type num       -default 1
+    zesty::def options "-paddingY" -validvalue formatPad -type num       -default 0
+
     zesty::def options "-content" -validvalue formatVKVP -type struct -with {
         text   -validvalue {}           -type any|none   -default ""
         align  -validvalue formatAlign  -type str        -default "left"
@@ -40,11 +43,11 @@ proc zesty::box {args} {
             styles      -validvalue formatStyles       -type any|none  -default ""
         }
     }
-    zesty::def options "-box" -validvalue formatVKVP   -type struct  -with {
+    zesty::def options "-box" -validvalue formatVKVP -type struct  -with {
         type       -validvalue formatTypeBox  -type str        -default "rounded"
         style      -validvalue formatStyle    -type any|none   -default ""
         size       -validvalue formatSizeBox  -type any|none   -default ""
-        fullScreen -validvalue formatVBool    -type any       -default "false"
+        fullScreen -validvalue formatVBool    -type any        -default "false"
     }
     zesty::def options "-formatCmdBoxMsgtruncated"  -validvalue {}  -type cmd|none  -default ""
 
@@ -71,6 +74,13 @@ proc zesty::box {args} {
         set bottom_right [zesty::parseStyleDictToXML $bottom_right $box_style]
         set vertical     [zesty::parseStyleDictToXML $vertical $box_style]
         set horizontal   [zesty::parseStyleDictToXML $horizontal $box_style]
+    }
+
+    # Uniform '-paddingX' and '-paddingY' with '-padding' option if specified.
+    if {[zesty::typeOf [dict get $options padding]] ne "none"} {
+        set pad [dict get $options padding]
+        dict set options paddingX $pad
+        dict set options paddingY $pad
     }
 
     set paddingX [dict get $options paddingX]
