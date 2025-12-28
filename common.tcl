@@ -318,6 +318,7 @@ proc zesty::smartTruncateStyledText {styled_text target_length add_ellipsis} {
     set visible_count 0
     set ellipsis_length [expr {$add_ellipsis ? 3 : 0}]
     set effective_target [expr {$target_length - $ellipsis_length}]
+    set addEllipsis [string repeat "." $ellipsis_length]
     
     foreach segment $segments {
         set type [lindex $segment 0]
@@ -340,9 +341,9 @@ proc zesty::smartTruncateStyledText {styled_text target_length add_ellipsis} {
                 set truncated_content [string range $content 0 $remaining_space-1]
                 if {$type eq "styled"} {
                     set attributes [lindex $segment 2]
-                    append result "<s $attributes>${truncated_content}...</s>"
+                    append result "<s $attributes>${truncated_content}${addEllipsis}</s>"
                 } else {
-                    append result "${truncated_content}..."
+                    append result "${truncated_content}${addEllipsis}"
                 }
             }
             break
