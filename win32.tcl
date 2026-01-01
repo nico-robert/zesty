@@ -260,37 +260,37 @@ namespace eval zesty {
                     szExeFile           chars[256]
                 }
 
-                K32 function CreateToolhelp32Snapshot HANDLE {
+                K32 stdcall CreateToolhelp32Snapshot HANDLE {
                     flags         DWFLAGS
                     th32ProcessID DWORD
                 }
 
-                K32 function GetCurrentProcessId DWORD {}
+                K32 stdcall GetCurrentProcessId DWORD {}
 
-                K32 function CloseHandle BOOL {
+                K32 stdcall CloseHandle BOOL {
                     hObject HANDLE
                 }
 
-                K32 function Process32First BOOL {
+                K32 stdcall Process32First BOOL {
                     hSnapshot HANDLE
                     lppe {struct.PROCESSENTRY32 out}
                 }
 
-                K32 function Process32Next BOOL {
+                K32 stdcall Process32Next BOOL {
                     hSnapshot HANDLE
                     lppe {struct.PROCESSENTRY32 out}
                 }
 
-                K32 function GetStdHandle HANDLE {
+                K32 stdcall GetStdHandle HANDLE {
                     nStdHandle STDFLAGS
                 }
 
-                K32 function GetConsoleMode BOOL {
+                K32 stdcall GetConsoleMode BOOL {
                     hConsoleHandle HANDLE
                     lpMode         {pointer.LPDWORD out}
                 }
 
-                K32 function FillConsoleOutputCharacterW BOOL {
+                K32 stdcall FillConsoleOutputCharacterW BOOL {
                     hConsoleOutput         HANDLE
                     cCharacter             TCHAR
                     nLength                DWORD
@@ -298,7 +298,7 @@ namespace eval zesty {
                     lpNumberOfCharsWritten {pointer.LPDWORD out}
                 }
 
-                K32 function FillConsoleOutputAttribute BOOL {
+                K32 stdcall FillConsoleOutputAttribute BOOL {
                     hConsoleOutput         HANDLE
                     wAttribute             DWC
                     nLength                DWORD
@@ -306,47 +306,47 @@ namespace eval zesty {
                     lpNumberOfAttrsWritten {pointer.LPDWORD out}
                 }
 
-                K32 function SetConsoleTextAttribute BOOL {
+                K32 stdcall SetConsoleTextAttribute BOOL {
                     hConsoleOutput HANDLE
                     wAttributes    {DWC bitmask}
                 }
 
-                K32 function GetConsoleScreenBufferInfo BOOL {
+                K32 stdcall GetConsoleScreenBufferInfo BOOL {
                     hConsoleOutput            HANDLE
                     lpConsoleScreenBufferInfo {struct.CONSOLE_SCREEN_BUFFER_INFO out}
                 }
 
-                K32 function SetConsoleCursorPosition BOOL {
+                K32 stdcall SetConsoleCursorPosition BOOL {
                     hConsoleOutput   HANDLE
                     dwCursorPosition struct.COORD
                 }
 
-                K32 function GetConsoleCursorInfo BOOL {
+                K32 stdcall GetConsoleCursorInfo BOOL {
                     hConsoleOutput      HANDLE
                     lpConsoleCursorInfo {struct.CONSOLE_CURSOR_INFO out}
                 }
 
-                K32 function SetConsoleCursorInfo BOOL {
+                K32 stdcall SetConsoleCursorInfo BOOL {
                     hConsoleOutput      HANDLE
                     lpConsoleCursorInfo pointer.CONSOLE_CURSOR_INFO
                 }
 
-                K32 function SetConsoleTitleW BOOL {
+                K32 stdcall SetConsoleTitleW BOOL {
                     lpConsoleTitle LPCTSTR
                 }
 
-                K32 function SetConsoleMode BOOL {
+                K32 stdcall SetConsoleMode BOOL {
                     hConsoleHandle HANDLE
                     dwMode         {STDMODE  bitmask}
                 }
 
-                K32 function SetConsoleOutputCP BOOL {
+                K32 stdcall SetConsoleOutputCP BOOL {
                     wCodePageID UINT
                 }
 
-                K32 function SetConsoleCP BOOL {
+                K32 stdcall SetConsoleCP BOOL {
                     wCodePageID UINT
-            }
+                }
             }
 
             proc setTitle {text} {
