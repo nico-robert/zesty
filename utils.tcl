@@ -656,6 +656,11 @@ proc zesty::SetTerminalTitle {text} {
     }
 }
 
+proc zesty::setTerminalTitle {text} {
+    # See zesty::SetTerminalTitle proc for details.
+    zesty::SetTerminalTitle $text
+} 
+
 proc zesty::showCursor {} {
     # Sends ANSI escape sequences to show cursor.
     #
