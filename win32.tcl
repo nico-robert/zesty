@@ -474,7 +474,7 @@ namespace eval zesty {
                 # See twapi procedure for details.
                 #
                 if {![k32::SetConsoleCursorPosition $handle [list X $x Y $y]]} {
-                    throwError "Console cursor position fails."
+                    ::zesty::throwError "Console cursor position fails."
                 }
                 return {}
             }
@@ -483,7 +483,7 @@ namespace eval zesty {
                 # See twapi procedure for details.
                 #
                 if {![k32::GetConsoleScreenBufferInfo $handle info]} {
-                    throwError "Could not get console screen buffer info"
+                    ::zesty::throwError "Could not get console screen buffer info"
                 }
 
                 return [list \
