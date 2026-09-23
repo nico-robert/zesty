@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Nicolas ROBERT.
+# Copyright (c) 2025-2026 Nicolas ROBERT.
 # Distributed under MIT license. Please see LICENSE for details.
 
 namespace eval zesty {}
@@ -44,7 +44,8 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
         set processed_text $base_ansi
     }
     
-    set re {<s\s*([^>]+)>([^<]*)</s>}
+    # Regular expression to match <s> tags
+    set re {<s\s+([^>]+)>([^<]*)</s>}
     
     # Search for <s> tags
     while {[regexp -indices -start $current_pos $re $result match attr_indices content_indices]} {
@@ -66,7 +67,7 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
             set local_ansi [zesty::parseEqualFormat $attributes]
         } else {
             # Unsupported format - ignore
-            zesty::throwError "Error: unsupported style format: $attributes"
+            error "zesty(error): Unsupported style format: $attributes"
         }
         
         # Apply local style, then content, then return to base style
@@ -79,7 +80,7 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
         if {$base_ansi ne ""} {
             append processed_text $base_ansi  ; # Return to base style
         } elseif {!$no_reset} {
-            append processed_text "\033\[0m"   ; # Complete reset
+            append processed_text [zesty::resetANSIStyle]   ; # Complete reset
         }
         
         set current_pos [expr {$match_end + 1}]
@@ -90,9 +91,9 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
     
     # Final reset if necessary
     if {!$no_reset} {
-        append processed_text "\033\[0m"
+        append processed_text [zesty::resetANSIStyle]
     }
-    
+
     return $processed_text
 }
 
@@ -360,4 +361,15 @@ proc zesty::parseContentLine {line} {
         parsed_line $parsed_line \
         visible_length [zesty::strLength $parsed_line] \
     ]
+}
+
+proc zesty::unescapeStyleTags {text escape_map} {
+    # Unescape back to original characters
+    #
+    # text       - input text
+    # escape_map - escape character mapping
+    #
+    # Returns: unescaped text
+
+    return [string map $escape_map $text]
 }
