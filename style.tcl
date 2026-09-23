@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Nicolas ROBERT.
+# Copyright (c) 2025-2026 Nicolas ROBERT.
 # Distributed under MIT license. Please see LICENSE for details.
 
 namespace eval zesty {
@@ -251,17 +251,27 @@ proc zesty::colorANSICode {color_code {bg 0}} {
     return {}
 }
 
+proc zesty::resetANSIStyle {} {
+    # Generates ANSI escape code to reset terminal formatting.
+    #
+    # Returns: the ANSI escape sequence to reset formatting.
+
+    return "\033\[0m"
+}
+
 proc zesty::echo {args} {
     # Main function for styled text output with color and formatting
     # support.
     #
     # args - variable arguments supporting:
-    #   -style {key value ...}  - style specifications
-    #   -filters {filter_list}  - text filters to apply
-    #   -command {command}      - command to execute
-    #   -n                      - suppress newline
-    #   -noreset                - don't reset formatting at end
-    #   text...                 - text content to display
+    #   -style {key value ...}      - style specifications
+    #   -filters {filter_list}      - text filters to apply
+    #   -command {command}          - Command to execute on the text before display.
+    #   -n                          - suppress newline
+    #   -noreset                    - don't reset formatting at end
+    #   -escape_map {key value ...} - escape character mapping
+    #   -raw                        - display raw text
+    #   text                        - text content to display
     #
     # Returns: nothing, outputs formatted text to stdout.
     set text ""
@@ -270,10 +280,12 @@ proc zesty::echo {args} {
     set addNewline 1
     set noReset 0
     set command {}
+    set escape_map {}
+    set raw 0
 
     for {set i 0} {$i < [llength $args]} {incr i} {
         set arg [lindex $args $i]
-        switch -- $arg {
+        switch -exact -- $arg {
             "-style" {
                 incr i
                 if {$i < [llength $args]} {
@@ -292,8 +304,15 @@ proc zesty::echo {args} {
                     set command [lindex $args $i]
                 }
             }
+            "-escape_map" {
+                incr i
+                if {$i < [llength $args]} {
+                    set escape_map [lindex $args $i]
+                }
+            }
             "-n"       {set addNewline 0}
             "-noreset" {set noReset 1}
+            "-raw"     {set raw 1}
             default {
                 append text $arg
                 if {$i < [llength $args] - 1} {
@@ -302,18 +321,28 @@ proc zesty::echo {args} {
             }
         }
     }
-    
-    # Mode with base style + inline tags
-    if {[llength $styleList] > 0} {
-        # Check if arguments are in key-value pairs
-        zesty::validateKeyValuePairs "-style" $styleList
+    if {$raw} {
+        set output $text
+    } else {
+        # Mode with base style + inline tags
+        if {[llength $styleList] > 0} {
+            # Check if arguments are in key-value pairs
+            zesty::validateKeyValuePairs "-style" $styleList
+        }
+
+        set output [zesty::parseStyle \
+            $text $styleList \
+            $noReset $filters \
+            $command 
+        ]
     }
 
-    set output [zesty::parseStyle \
-        $text $styleList \
-        $noReset $filters \
-        $command 
-    ]
+    # Mode with escape character mapping.
+    if {[llength $escape_map] > 0} {
+        # Check if arguments are in key-value pairs
+        zesty::validateKeyValuePairs "-escape_map" $escape_map
+        set output [zesty::unescapeStyleTags $output $escape_map]
+    }
     
     # Display output
     if {$addNewline} {
