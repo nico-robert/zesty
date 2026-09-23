@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Nicolas ROBERT.
+# Copyright (c) 2025-2026 Nicolas ROBERT.
 # Distributed under MIT license. Please see LICENSE for details.
 
 namespace eval zesty {}
@@ -183,7 +183,7 @@ proc zesty::loop {args} {
             -delay  {set delay $value}
             -start  {set start $value}
             -end    {set end $value}
-            default {zesty::throwError "'$key' non supporté"}
+            default {zesty::throwError "'$key' not supported."}
         }
     }
     
@@ -692,7 +692,7 @@ proc zesty::validateKeyValuePairs {key value} {
 
     if {[llength $value] % 2} {
         set msg "wrong # args: '$key' must be in key-value pairs."
-        return -level [info level] -code error $msg
+        return -code error $msg
     }
 }
 
