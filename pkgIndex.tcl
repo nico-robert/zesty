@@ -8,19 +8,19 @@ package ifneeded zesty 0.2 [list apply {dir {
     
     if {[platform::generic] eq "win32-x86_64"} {
         package require registry
-        source -encoding utf-8 [file join $dir win32.tcl]
+        source -encoding utf-8 [file join $dir src win32.tcl]
     }
 
-    source -encoding utf-8 [file join $dir parse.tcl]
-    source -encoding utf-8 [file join $dir colors.tcl]
-    source -encoding utf-8 [file join $dir utils.tcl]
-    source -encoding utf-8 [file join $dir style.tcl]
-    source -encoding utf-8 [file join $dir format.tcl]
-    source -encoding utf-8 [file join $dir common.tcl]
-    source -encoding utf-8 [file join $dir box.tcl]
-    source -encoding utf-8 [file join $dir json.tcl]
-    source -encoding utf-8 [file join $dir table.tcl]
-    source -encoding utf-8 [file join $dir progressbar.tcl]
-    source -encoding utf-8 [file join $dir highlights.tcl]
+    source -encoding utf-8 [file join $dir src parse.tcl]
+    source -encoding utf-8 [file join $dir src colors.tcl]
+    source -encoding utf-8 [file join $dir src utils.tcl]
+    source -encoding utf-8 [file join $dir src style.tcl]
+    source -encoding utf-8 [file join $dir src format.tcl]
+    source -encoding utf-8 [file join $dir src common.tcl]
+    source -encoding utf-8 [file join $dir src box.tcl]
+    source -encoding utf-8 [file join $dir src json.tcl]
+    source -encoding utf-8 [file join $dir src table.tcl]
+    source -encoding utf-8 [file join $dir src progressbar.tcl]
+    source -encoding utf-8 [file join $dir src highlights.tcl]
  
 }} $dir]
