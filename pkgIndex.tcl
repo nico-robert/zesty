@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Nicolas ROBERT.
+# Copyright (c) 2025-2026 Nicolas ROBERT.
 # Distributed under MIT license. Please see LICENSE for details.
 
 package ifneeded zesty 0.2 [list apply {dir {
@@ -21,5 +21,6 @@ package ifneeded zesty 0.2 [list apply {dir {
     source -encoding utf-8 [file join $dir json.tcl]
     source -encoding utf-8 [file join $dir table.tcl]
     source -encoding utf-8 [file join $dir progressbar.tcl]
+    source -encoding utf-8 [file join $dir highlights.tcl]
  
 }} $dir]
