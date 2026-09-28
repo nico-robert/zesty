@@ -344,6 +344,13 @@ proc zesty::echo {args} {
         set output [zesty::unescapeStyleTags $output $escape_map]
     }
     
+    # While a progress bar is live, the display thread owns the terminal:
+    # it erases the live region, writes the message and redraws the bars.
+    if {[llength [info commands ::zesty::live::active]] && [zesty::live::active]} {
+        zesty::live::write $output $addNewline
+        return
+    }
+
     # Display output
     if {$addNewline} {
         puts stdout $output
