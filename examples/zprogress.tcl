@@ -7,6 +7,11 @@ lappend auto_path [file dirname [file dirname [file normalize [info script]]]]
 
 package require zesty
 
+proc sleep {time} {
+    after $time {set end 1}
+    vwait end
+}
+
 proc test_basic_progress {} {
     zesty::echo "\n=== Test 1: Basic Progress Bar ==="
     
@@ -16,7 +21,8 @@ proc test_basic_progress {} {
     # Add a task
     set task1 [$bar addTask -name "Downloading" -total 100]
 
-    zesty::loop -start 0 -end 100 -delay 100 {
+    for {set i 0} {$i <= 100} {incr i} {
+        sleep 100
         $bar advance $task1 1
     }
     
@@ -45,7 +51,8 @@ proc test_multiple_tasks {} {
     set task2 [$bar addTask -name "Installing" -total 80]
     set task3 [$bar addTask -name "Configuring" -total 50]
 
-    zesty::loop -start 0 -end 100 -delay 100 {
+    for {set i 0} {$i <= 100} {incr i} {
+        sleep 100
         $bar advance $task1 1
         $bar advance $task2 8
         $bar advance $task3 15
@@ -218,7 +225,8 @@ proc test_mixed_modes {} {
     set task1 [$bar addTask -name "Scanning..." -mode indeterminate]
     set task2 [$bar addTask -name "Processing..." -total 100]
 
-    zesty::loop -start 0 -end 100 -delay 100 {
+    for {set i 0} {$i <= 100} {incr i} {
+        sleep 100
         $bar advance $task2 1
     }
 
@@ -261,7 +269,8 @@ proc test_custom_command_column {} {
     
     set task1 [$bar addTask -name "Task with custom status..." -total 100]
     
-    zesty::loop -start 0 -end 100 -delay 100 {
+    for {set i 0} {$i <= 100} {incr i} {
+        sleep 100
         $bar advance $task1 1
     }
 
