@@ -131,6 +131,32 @@ proc ::zesty::render::tick {} {
     return {}
 }
 
+proc zesty::render::frameLines {object now width height} {
+    # Formats the lines of one bar for the terminal.
+    #
+    # object - worker-side [zesty::Bar] object
+    # now    - current time in milliseconds
+    # width  - terminal width
+    # height - terminal height
+    #
+    # Returns: A list of lines, styled if output is interactive,
+    # plain text otherwise.
+    variable interactive
+    set result {}
+    foreach line [$object lines $now $width $height] {
+        # Keep each task/header on one physical terminal line. Leave one
+        # spare column to avoid autowrap, including on narrow terminals.
+        set line [string map [list \n " " \r " " \t " "] $line]
+        set line [zesty::smartTruncateStyledText $line [expr {max(1, $width - 1)}] 1]
+        if {$interactive} {
+            lappend result [zesty::parseStyle $line {}]
+        } else {
+            lappend result [zesty::extractVisibleText $line]
+        }
+    }
+    return $result
+}
+
 proc zesty::render::draw {{force 0}} {
     # Draws all bars in the terminal, only if lines have changed.
     #
@@ -155,17 +181,7 @@ proc zesty::render::draw {{force 0}} {
     lassign $size width height
     set lines {}
     dict for {name object} $objects {
-        foreach line [$object lines $now $width $height] {
-            # Keep each task/header on one physical terminal line. Leave one
-            # spare column to avoid autowrap, including on narrow terminals.
-            set line [string map [list \n " " \r " " \t " "] $line]
-            set line [zesty::smartTruncateStyledText $line [expr {max(1, $width - 1)}] 1]
-            if {$interactive} {
-                lappend lines [zesty::parseStyle $line {}]
-            } else {
-                lappend lines [zesty::extractVisibleText $line]
-            }
-        }
+        lappend lines {*}[zesty::render::frameLines $object $now $width $height]
     }
     if {$interactive} {
         set lines [lrange $lines end-[expr {max(1, $height - 1) - 1}] end]
@@ -267,7 +283,8 @@ proc zesty::render::messageWritten {text newline} {
 
 proc zesty::render::remove {name} {
     # Destroys the worker-side bar associated with name and redraws
-    # the remaining bars.
+    # the remaining bars. Its final frame stays on screen: above the
+    # live region if other bars remain, in place otherwise.
     #
     # name - [zesty::Bar] application-side object
     #
@@ -276,23 +293,34 @@ proc zesty::render::remove {name} {
     variable rows
     variable previous
     variable interactive
+    variable partial
     variable size
     variable shared
 
     if {![dict exists $objects $name]} {
         return
     }
+    set bar [dict get $objects $name]
     try {
         zesty::render::draw
         if {!$interactive} {
             # Each removed bar gets exactly one final snapshot in a pipe/file.
-            foreach line [[dict get $objects $name] lines [clock milliseconds] {*}$size] {
+            foreach line [$bar lines [clock milliseconds] {*}$size] {
                 puts stdout [zesty::extractVisibleText [string map [list \n " " \r " " \t " "] $line]]
+            }
+            flush stdout
+        } elseif {!$partial && [dict size $objects] > 1} {
+            # Other bars stay live: write this bar's final frame above
+            # the live region, like a message, instead of dropping it.
+            lassign $size width height
+            set final [zesty::render::frameLines $bar [clock milliseconds] $width $height]
+            zesty::render::erase
+            foreach line $final {
+                zesty::echo -raw "$line\033\[0m"
             }
             flush stdout
         }
     } finally {
-        set bar [dict get $objects $name]
         $bar destroy
         # The key only exists if this bar has used custom/callback columns.
         catch {tsv::unset $shared "custom:$bar"}
