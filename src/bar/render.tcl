@@ -38,6 +38,8 @@ proc zesty::render::start {directory arrayName} {
     zesty::render::measure
     tsv::set $shared frames 0
     zesty::render::tick
+
+    return {}
 }
 
 proc zesty::render::measure {} {
@@ -61,6 +63,8 @@ proc zesty::render::measure {} {
         set size $measured
     }
     tsv::set $shared size $size
+
+    return {}
 }
 
 proc zesty::render::add {owner args} {
@@ -78,20 +82,23 @@ proc zesty::render::add {owner args} {
     return $bar
 }
 
-proc zesty::render::call {bar spinnerstyles method args} {
+proc zesty::render::call {bar method args} {
     # Calls a method on a worker-side bar, and draws immediately
-    # on cleanup or completion.
+    # on cleanup or when the call completes all tasks.
     #
-    # bar           - worker-side [zesty::Bar] object
-    # spinnerstyles - spinner styles dictionary
-    # method        - method name
-    # args          - method arguments
+    # bar    - worker-side [zesty::Bar] object
+    # method - method name
+    # args   - method arguments
     #
     # Returns: A list {result needsCallbacks fresh}.
-    set ::zesty::spinnerstyles $spinnerstyles
+    set wasFinished [$bar finished]
     set result [$bar $method {*}$args]
-    # Completion and cleanup must be visible before returning to the caller.
-    if {$method eq "cleanup" || [$bar finished]} {draw}
+    # Completion and cleanup must be visible before returning to the caller;
+    # later calls on a finished bar need no redraw.
+    if {$method eq "cleanup" || (!$wasFinished && [$bar finished])} {
+        zesty::render::draw
+    }
+
     return [list $result {*}[$bar callbackStatus]]
 }
 
@@ -105,6 +112,8 @@ proc zesty::render::recordError {message options} {
     variable shared
 
     tsv::set $shared error [list $message $options]
+
+    return {}
 }
 
 proc ::zesty::render::tick {} {
@@ -118,6 +127,8 @@ proc ::zesty::render::tick {} {
         zesty::render::recordError $message $options
     }
     set timer [after 50 ::zesty::render::tick]
+
+    return {}
 }
 
 proc zesty::render::draw {{force 0}} {
@@ -188,6 +199,8 @@ proc zesty::render::draw {{force 0}} {
     set rows [llength $lines]
     set previous $lines
     tsv::set $shared frames [incr frames]
+
+    return {}
 }
 
 proc zesty::render::erase {} {
@@ -204,6 +217,8 @@ proc zesty::render::erase {} {
     }
     set rows 0
     set previous {}
+
+    return {}
 }
 
 proc zesty::render::withMessage {text newline} {
@@ -226,6 +241,7 @@ proc zesty::render::withMessage {text newline} {
         zesty::render::messageWritten $text $newline
         zesty::render::draw
     }
+
     return {}
 }
 
@@ -245,6 +261,8 @@ proc zesty::render::messageWritten {text newline} {
     } elseif {$text ne ""} {
         set partial 1
     }
+
+    return {}
 }
 
 proc zesty::render::remove {name} {
@@ -287,6 +305,8 @@ proc zesty::render::remove {name} {
             set previous {}
         }
     }
+
+    return {}
 }
 
 proc zesty::render::stop {} {
@@ -299,4 +319,6 @@ proc zesty::render::stop {} {
         set timer ""
     }
     flush stdout
+
+    return {}
 }
