@@ -7,6 +7,11 @@ lappend auto_path [file dirname [file dirname [file normalize [info script]]]]
 
 package require zesty
 
+proc sleep {time} {
+    after $time {set end 1}
+    vwait end
+}
+
 proc mycmd {self tid task} {
     set elapsed [$self elapsedTime $tid]
     if {$elapsed <= 0} {
@@ -112,7 +117,8 @@ proc test_progress_extended {} {
     after 6000 [list $pb1 advance $mytask 100]
 
     # Standard usage - the script will automatically wait for completion
-    zesty::loop -start 0 -end 100 -delay 100 {
+    for {set i 0} {$i < 100} {incr i} {
+        sleep 100
         $pb1 advance $task1_id 1
         $pb1 advance $task2_id 2
     }
