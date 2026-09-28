@@ -15,6 +15,13 @@ namespace eval zesty::render {
 }
 
 proc zesty::render::start {directory arrayName} {
+    # Sources zesty in the display thread, measures the terminal
+    # and starts the render loop.
+    #
+    # directory - zesty root directory
+    # arrayName - name of the shared (tsv) array
+    #
+    # Returns: Nothing.
     variable shared
     set shared $arrayName
     # The worker sources the same package files; progressbar.tcl loads the real
@@ -34,6 +41,9 @@ proc zesty::render::start {directory arrayName} {
 }
 
 proc zesty::render::measure {} {
+    # Measures the terminal size and detects if output is interactive.
+    #
+    # Returns: Nothing.
     variable size
     variable sizeDue
     variable interactive
@@ -54,6 +64,12 @@ proc zesty::render::measure {} {
 }
 
 proc zesty::render::add {owner args} {
+    # Creates the worker-side bar associated with owner.
+    #
+    # owner - [zesty::Bar] application-side object
+    # args  - bar configuration options
+    #
+    # Returns: The worker-side [zesty::Bar] object.
     variable objects
 
     set bar [zesty::Bar new $owner {*}$args]
@@ -63,6 +79,15 @@ proc zesty::render::add {owner args} {
 }
 
 proc zesty::render::call {bar spinnerstyles method args} {
+    # Calls a method on a worker-side bar, and draws immediately
+    # on cleanup or completion.
+    #
+    # bar           - worker-side [zesty::Bar] object
+    # spinnerstyles - spinner styles dictionary
+    # method        - method name
+    # args          - method arguments
+    #
+    # Returns: A list {result needsCallbacks fresh}.
     set ::zesty::spinnerstyles $spinnerstyles
     set result [$bar $method {*}$args]
     # Completion and cleanup must be visible before returning to the caller.
@@ -71,12 +96,21 @@ proc zesty::render::call {bar spinnerstyles method args} {
 }
 
 proc zesty::render::recordError {message options} {
+    # Stores an error in shared storage so the owner thread can rethrow it.
+    #
+    # message - error message
+    # options - error options dictionary
+    #
+    # Returns: Nothing.
     variable shared
 
     tsv::set $shared error [list $message $options]
 }
 
 proc ::zesty::render::tick {} {
+    # Render loop: draws the frame every 50 ms and records errors.
+    #
+    # Returns: Nothing.
     variable timer
 
     set timer ""
@@ -87,6 +121,11 @@ proc ::zesty::render::tick {} {
 }
 
 proc zesty::render::draw {{force 0}} {
+    # Draws all bars in the terminal, only if lines have changed.
+    #
+    # force - redraw even if lines are unchanged
+    #
+    # Returns: Nothing.
     variable shared
     variable objects
     variable rows
@@ -152,6 +191,9 @@ proc zesty::render::draw {{force 0}} {
 }
 
 proc zesty::render::erase {} {
+    # Erases the live region from the terminal.
+    #
+    # Returns: Nothing.
     variable rows
     variable previous
     variable interactive
@@ -167,6 +209,13 @@ proc zesty::render::erase {} {
 # Coordinate the live region; zesty::echo remains the only message formatter
 # and writer. No calls back into the owner are made from this interpreter.
 proc zesty::render::withMessage {args result} {
+    # Erases the live region, prints a message with zesty::echo,
+    # then redraws the bars.
+    #
+    # args   - zesty::echo arguments
+    # result - value returned by echoCallback during the echo
+    #
+    # Returns: Nothing.
     variable callbackResult
     set callbackResult $result
     zesty::render::erase
@@ -180,11 +229,23 @@ proc zesty::render::withMessage {args result} {
 }
 
 proc zesty::render::echoCallback {text} {
+    # Callback used by zesty::echo inside withMessage.
+    #
+    # text - text passed by zesty::echo (unused)
+    #
+    # Returns: The callback result set by withMessage.
     variable callbackResult
     return $callbackResult
 }
 
 proc zesty::render::messageWritten {text newline} {
+    # Tracks whether the last message left an unfinished line,
+    # in which case drawing is suspended.
+    #
+    # text    - written text
+    # newline - 1 if a newline was appended
+    #
+    # Returns: Nothing.
     variable partial
     # Style resets after a newline do not make that line unfinished.
     regsub -all {\x1b\[[0-9;]*m} $text {} text
@@ -196,6 +257,12 @@ proc zesty::render::messageWritten {text newline} {
 }
 
 proc zesty::render::remove {name} {
+    # Destroys the worker-side bar associated with name and redraws
+    # the remaining bars.
+    #
+    # name - [zesty::Bar] application-side object
+    #
+    # Returns: Nothing.
     variable objects
     variable rows
     variable previous
@@ -232,6 +299,9 @@ proc zesty::render::remove {name} {
 }
 
 proc zesty::render::stop {} {
+    # Cancels the render loop timer and flushes stdout.
+    #
+    # Returns: Nothing.
     variable timer
     if {$timer ne ""} {
         after cancel $timer

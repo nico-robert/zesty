@@ -121,9 +121,13 @@ oo::class create zesty::Bar {
 
     }
 
-    # The worker owns state and rendering. Display invalidates the cached frame;
-    # its common timer handles actual terminal writes.
     method Display {{refreshCustom 1}} {
+        # Invalidates the cached frame and updates the completion status.
+        # The actual terminal write is done by the render thread timer.
+        #
+        # refreshCustom - Unused, kept for compatibility
+        #
+        # Returns: Nothing.
         set _paused 0
         set _cachedRows {}
         set _all_tasks_completed [my CheckCompletionStatus]
@@ -131,6 +135,13 @@ oo::class create zesty::Bar {
     }
 
     method updateColumn {task_id column_num} {
+        # Invalidates custom column values and refreshes the display.
+        # Throws error if task doesn't exist or column is not visible.
+        #
+        # task_id    - task identifier
+        # column_num - column number
+        #
+        # Returns: Nothing.
         if {![dict exists $_tasks $task_id]} {
             error "zesty(error): Task ID '$task_id' does not exist."
         }
@@ -144,18 +155,58 @@ oo::class create zesty::Bar {
     }
 
     method cleanup {} {
+        # Renders a final frame and pauses the bar, so that
+        # subsequent frames reuse the cached rows.
+        #
+        # Returns: Nothing.
         if {!$_paused} {my lines [clock milliseconds] {*}$::zesty::render::size}
         set _paused 1
         return {}
     }
 
-    method updateSpinners {} {my Display}
-    method updateTimeColumns {} {my Display}
-    method updateCountColumn {} {my Display}
-    method updateIndeterminateBars {} {my Display}
-    method updateCustomProcs {} {set _customFresh 0; my Display}
+    method updateSpinners {} {
+        # Invalidates the cached frame to redraw spinners.
+        #
+        # Returns: Nothing.
+        my Display
+    }
+
+    method updateTimeColumns {} {
+        # Invalidates the cached frame to redraw time columns.
+        #
+        # Returns: Nothing.
+        my Display
+    }
+
+    method updateCountColumn {} {
+        # Invalidates the cached frame to redraw count columns.
+        #
+        # Returns: Nothing.
+        my Display
+    }
+
+    method updateIndeterminateBars {} {
+        # Invalidates the cached frame to redraw indeterminate bars.
+        #
+        # Returns: Nothing.
+        my Display
+    }
+
+    method updateCustomProcs {} {
+        # Invalidates custom column values and the cached frame
+        # to redraw custom columns.
+        #
+        # Returns: Nothing.
+        set _customFresh 0
+        my Display
+    }
 
     method CustomColumns {} {
+        # Rebuilds the list of visible columns requiring a callback
+        # (custom column types or 'apply' format) and invalidates
+        # previously collected callback values.
+        #
+        # Returns: Nothing.
         set _customColumns {}
         dict for {num config} $_column_configs {
             if {![dict get $config visible]} {continue}
@@ -172,19 +223,35 @@ oo::class create zesty::Bar {
     }
 
     method needsCallbacks {} {
+        # Checks if column callbacks must be run by the owner thread.
+        #
+        # Returns: 1 if the bar is not paused, has custom columns and tasks,
+        # and tasks are running or values are stale, 0 otherwise.
         return [expr {!$_paused && [llength $_customColumns] && [dict size $_tasks] &&
             (!$_all_tasks_completed || !$_customFresh)}]
     }
 
     method finished {} {
+        # Checks if the bar has tasks and all of them are completed.
+        #
+        # Returns: 1 if all tasks are completed, 0 otherwise.
         return [expr {[dict size $_tasks] && $_all_tasks_completed}]
     }
 
-    method callbackStatus {} {return [list [my needsCallbacks] $_customFresh]}
+    method callbackStatus {} {
+        # Gets the callback status of the bar.
+        #
+        # Returns: A list {needsCallbacks fresh}.
+        return [list [my needsCallbacks] $_customFresh]
+    }
 
-    # Formatting supplies the same callback arguments as before. During this
-    # pass Callback records invocations instead of executing application code.
+
     method callbackJobs {} {
+        # Collects the callback commands needed to format custom columns,
+        # without executing them.
+        #
+        # Returns: A list {generation jobs} where jobs is a list of
+        # {task_id column command} elements.
         set _callbackJobs {}
         set _collectCallbacks 1
         try {
@@ -201,6 +268,14 @@ oo::class create zesty::Bar {
     }
 
     method Callback {task num command} {
+        # Records a callback job when collecting, and returns the last
+        # value computed by the owner thread.
+        #
+        # task    - task identifier
+        # num     - column number
+        # command - command to evaluate in the owner interpreter
+        #
+        # Returns: The cached callback value, or an empty string.
         if {$_collectCallbacks} {lappend _callbackJobs [list $task $num $command]}
         if {[dict exists $_customValues $task $num]} {
             return [dict get $_customValues $task $num]
@@ -209,7 +284,12 @@ oo::class create zesty::Bar {
     }
 
     method callbacksReady {} {
+        # Loads callback values computed by the owner thread from shared
+        # storage, if they match the current layout generation.
+        #
+        # Returns: 1 if callbacks still need to run, 0 otherwise.
         lassign [tsv::get $::zesty::render::shared "custom:[self]"] generation values
+
         # A callback may have changed the column configuration or added a task.
         # Reject values prepared for an older layout, and retry on the next tick.
         if {$generation == $_customGeneration} {
@@ -233,7 +313,7 @@ oo::class create zesty::Bar {
         # column_num - column number to configure
         # data       - header configuration dictionary
         #
-        # Returns: nothing.
+        # Returns: Nothing.
         if {![dict exists $_column_configs $column_num]} {
             error "zesty(error): Column: '$column_num' does not exist."
         }
@@ -248,7 +328,7 @@ oo::class create zesty::Bar {
         #
         # config - dictionary of column headers in key-value pairs
         #
-        # Returns: nothing.
+        # Returns: Nothing.
 
         if {![dict get $_options headers show]} {
             error "zesty(error): Headers are not enabled"
@@ -266,7 +346,7 @@ oo::class create zesty::Bar {
         #
         # column_num - column number to get header for
         #
-        # Returns header configuration dict with name, align, and style.
+        # Returns: Header configuration dict with name, align, and style.
         # Uses default headers based on column type if not configured.
 
         if {[dict exists $_header_configs $column_num]} {
@@ -294,7 +374,7 @@ oo::class create zesty::Bar {
         # index - column index number
         # type  - column type
         #
-        # Returns nothing
+        # Returns: Nothing.
         switch -exact -- $type {
             "zName" {
                 dict set _column_configs $index visible 1
@@ -364,7 +444,7 @@ oo::class create zesty::Bar {
         # task_id - task identifier
         # width   - column width for spinner display
         #
-        # Returns formatted spinner text centered in column width.
+        # Returns: Formatted spinner text centered in column width.
 
         set spinnerStyle "dots"
         # Check if specific style is defined for this column
@@ -432,7 +512,7 @@ oo::class create zesty::Bar {
         #                can be either a simple type string or a list for
         #                separators with custom characters
         #
-        # Returns nothing
+        # Returns: Nothing.
         set _column_configs {}
 
         # Index for columns
@@ -489,7 +569,7 @@ oo::class create zesty::Bar {
         #  -spinnerStyle - spinner animation style
         #  -style        - text styling options
         #
-        # Returns nothing.
+        # Returns: Nothing.
 
         set num "-"
         if {[string is integer -strict $numOrType]} {
@@ -559,7 +639,7 @@ oo::class create zesty::Bar {
         # args - configuration options (same as configureColumn)
         #        Must include -type option
         #
-        # Returns nothing.
+        # Returns: Nothing.
 
         if {[dict exists $_column_configs $num]} {
             error "zesty(error): Column '$num' already exists"
@@ -583,6 +663,17 @@ oo::class create zesty::Bar {
     }
 
     method addTask {args} {
+        # Adds a new task to the progress bar.
+        #
+        # args - configuration options in key-value pairs:
+        #   -name      - task description
+        #   -total     - total number of steps
+        #   -completed - number of completed steps
+        #   -mode      - progress mode (determinate, indeterminate)
+        #   -animStyle - animation style for indeterminate mode
+        #
+        # Returns: The new task identifier.
+
         # Validate into a temporary dictionary: errors must not leave ghost tasks.
         zesty::validateKeyValuePairs "args" $args
         set now [clock milliseconds]
@@ -626,6 +717,19 @@ oo::class create zesty::Bar {
     }
 
     method update {task_id args} {
+        # Updates task properties.
+        # Throws error if task doesn't exist or invalid options provided.
+        #
+        # task_id - task identifier
+        # args    - configuration options in key-value pairs:
+        #   -total       - total number of steps
+        #   -completed   - number of completed steps
+        #   -advance     - number of steps to advance
+        #   -mode        - progress mode (determinate, indeterminate)
+        #   -description - task description
+        #
+        # Returns: Nothing.
+
         # Mutations and queries execute on the same remote object, in order.
         if {![dict exists $_tasks $task_id]} {
             error "zesty(error): Task ID '$task_id' does not exist."
@@ -676,7 +780,7 @@ oo::class create zesty::Bar {
         # Checks if any spinner columns are visible.
         # Used to determine if spinner update timers needed.
         #
-        # Returns 1 if at least one spinner column exists and is visible,
+        # Returns: 1 if at least one spinner column exists and is visible,
         # 0 otherwise.
 
         foreach num [dict keys $_column_configs] {
@@ -698,7 +802,7 @@ oo::class create zesty::Bar {
         # task_id - task identifier to advance
         # steps - number of steps to advance (default: 1)
         #
-        # Returns nothing.
+        # Returns: Nothing.
         if {![dict exists $_tasks $task_id]} {
             zesty::throwError "Task ID '$task_id' does not exist."
         }
@@ -713,7 +817,7 @@ oo::class create zesty::Bar {
         #
         # task_id - task identifier
         #
-        # Returns percentage as floating point number (0.0-100.0)
+        # Returns: Percentage as floating point number (0.0-100.0)
         # or '0' if total is '0' or negative.
 
         if {[dict get $_tasks $task_id total] <= 0} {
@@ -730,7 +834,7 @@ oo::class create zesty::Bar {
         #
         # task_id - task identifier
         #
-        # Returns elapsed time as floating point seconds.
+        # Returns: Elapsed time as floating point seconds.
 
         if {[dict exists $_tasks $task_id completion_time]} {
             return [expr {
@@ -750,7 +854,7 @@ oo::class create zesty::Bar {
         #
         # task_id - task identifier
         #
-        # Returns estimated remaining time in seconds as floating point,
+        # Returns: Estimated remaining time in seconds as floating point,
         # or '0.0' if completed, '-1.0' if cannot estimate.
 
         set completed [dict get $_tasks $task_id completed]
@@ -773,7 +877,7 @@ oo::class create zesty::Bar {
         #
         # seconds - time duration in seconds (floating point)
         #
-        # Returns formatted string in HH:MM:SS.mmm format.
+        # Returns: Formatted string in HH:MM:SS.mmm format.
 
         if {$seconds < 0} {return "--:--:--.---"}
 
@@ -797,7 +901,7 @@ oo::class create zesty::Bar {
         # bg_color - background color
         # fg_color - foreground color
         #
-        # Returns formatted progress bar string with colors applied.
+        # Returns: Formatted progress bar string with colors applied.
 
         set mode [dict get $_tasks $task_id mode]
 
@@ -851,7 +955,7 @@ oo::class create zesty::Bar {
         # fg_color - foreground color
         # speed    - animation speed
         #
-        # Returns animated bar with block bouncing left-right.
+        # Returns: Animated bar with block bouncing left-right.
 
         set block_size [expr {max(int($width / 4), 3)}]
 
@@ -910,7 +1014,7 @@ oo::class create zesty::Bar {
         # fg_color - foreground color
         # speed    - animation speed
         #
-        # Returns animated bar with pulsing block in center.
+        # Returns: Animated bar with pulsing block in center.
 
         set max_size [expr {int($width * 0.8)}]
         set min_size [expr {int($width * 0.2)}]
@@ -978,7 +1082,7 @@ oo::class create zesty::Bar {
         # speed        - animation speed
         # pattern_size - size of wave pattern (default: 6)
         #
-        # Returns animated bar with wave pattern moving left to right.
+        # Returns: Animated bar with wave pattern moving left to right.
 
         set ld [dict get $_options leftBarDelimiter]
         set rd [dict get $_options rightBarDelimiter]
@@ -1042,7 +1146,7 @@ oo::class create zesty::Bar {
         # num     - column number
         # width   - column width
         #
-        # Returns formatted content string for the column.
+        # Returns: Formatted content string for the column.
 
         set key [dict get $_column_configs $num type]
         set align "left"
@@ -1201,7 +1305,7 @@ oo::class create zesty::Bar {
         # dictvalue   - dictionary containing values to format
         # format_spec - format specification (format string or apply command)
         #
-        # Returns formatted string.
+        # Returns: Formatted string.
 
         if {$format_spec eq ""} {
             return [dict get $dictvalue result]
@@ -1228,7 +1332,7 @@ oo::class create zesty::Bar {
         # width - target width
         # align - alignment type
         #
-        # Returns formatted text with proper alignment and truncation.
+        # Returns: Formatted text with proper alignment and truncation.
 
         # Extract visible text to calculate true length
         set preserveStyles [string match {*<s*</s>*} $text]
@@ -1242,7 +1346,7 @@ oo::class create zesty::Bar {
     method CalculateColumnWidths {} {
         # Calculates column widths for current terminal size.
         #
-        # Returns dictionary mapping column numbers to calculated widths.
+        # Returns: Dictionary mapping column numbers to calculated widths.
 
         # Uses caching to avoid recalculation when not needed.
         if {$_cache_valid && [dict size $_column_widths_cache] > 0} {
@@ -1388,7 +1492,7 @@ oo::class create zesty::Bar {
     method CheckCompletionStatus {} {
         # Checks if all tasks are completed.
         #
-        # Returns 1 if all tasks have reached their total progress,
+        # Returns: 1 if all tasks have reached their total progress,
         # 0 if any task is still incomplete.
         foreach task_id [dict keys $_tasks] {
             if {
@@ -1402,6 +1506,14 @@ oo::class create zesty::Bar {
     }
 
     method lines {now width height} {
+        # Builds the display lines (header, separator and one line
+        # per task) for the current frame.
+        #
+        # now    - current time in milliseconds
+        # width  - terminal width
+        # height - terminal height
+        #
+        # Returns: A list of styled lines.
         if {$width != $_term_width || $height != $_term_height} {
             set _term_width $width
             set _term_height $height

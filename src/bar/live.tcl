@@ -18,6 +18,11 @@ oo::class create zesty::Bar {
     variable _pending
 
     constructor {args} {
+        # Creates the application-side proxy of the progress bar and its
+        # remote counterpart in the display thread.
+        #
+        # args - configuration options (see zesty::Bar constructor in core.tcl)
+
         set _remoteBar ""
         set _refreshing 0
         set _timer ""
@@ -28,6 +33,8 @@ oo::class create zesty::Bar {
     }
 
     destructor {
+        # Cancels the pending refresh timer and releases the remote bar.
+
         if {[info exists _timer] && $_timer ne ""} {
             after cancel $_timer
         }
@@ -36,8 +43,11 @@ oo::class create zesty::Bar {
         }
     }
 
-    # Calling destroy from a callback would invalidate its in-flight results.
     method destroy {} {
+        # Destroys the object.
+        # Throws error if called from inside a column callback.
+        #
+        # Returns: Nothing.
         if {$_refreshing} {
             error "zesty(error): destroy cannot run inside a column callback"
         }
@@ -45,6 +55,13 @@ oo::class create zesty::Bar {
     }
 
     method Call {method args} {
+        # Relays a method call to the remote bar in the display thread,
+        # then runs pending column callbacks if needed.
+        #
+        # method - method name
+        # args   - method arguments
+        #
+        # Returns: The result of the remote method.
         if {$method eq "cleanup" && $_refreshing} {
             error "zesty(error): cleanup cannot run inside a column callback"
         }
@@ -70,6 +87,9 @@ oo::class create zesty::Bar {
     }
 
     method Schedule {} {
+        # (Re)schedules the refresh timer while callbacks are pending.
+        #
+        # Returns: Nothing.
         if {$_timer ne ""} {
             after cancel $_timer
             set _timer ""
@@ -80,12 +100,19 @@ oo::class create zesty::Bar {
     }
 
     method tick {} {
+        # Timer handler: refreshes column callbacks and reschedules.
+        #
+        # Returns: Nothing.
         set _timer ""
         my Refresh
         my Schedule
     }
 
     method Refresh {} {
+        # Evaluates column callbacks in the owner interpreter and sends
+        # their results to the display thread through shared storage.
+        #
+        # Returns: Nothing.
         if {$_refreshing || !$_pending || [clock milliseconds] < $_due} {return}
         set _refreshing 1
         try {
@@ -109,15 +136,25 @@ oo::class create zesty::Bar {
         }
     }
 
-    method getONSClass {} {return [info object namespace [self class]]}
+    method getONSClass {} {
+        # Returns the name of the internal namespace of the object.
+        return [info object namespace [self class]]
+    }
 }
 
 proc zesty::live::active {} {
+    # Checks if the display thread is running.
+    #
+    # Returns: 1 if the display thread is running, 0 otherwise.
     variable tid
     return [expr {$tid ne ""}]
 }
 
 proc zesty::live::check {} {
+    # Checks that the display thread is running and rethrows
+    # any error recorded by it.
+    #
+    # Returns: Nothing.
     variable tid
     variable shared
     if {$tid eq "" || ![thread::exists $tid]} {
@@ -130,6 +167,9 @@ proc zesty::live::check {} {
 }
 
 proc zesty::live::stop {} {
+    # Stops the display thread and frees the shared storage.
+    #
+    # Returns: Nothing.
     variable tid
     variable shared
     if {$tid eq ""} {return}
@@ -142,6 +182,13 @@ proc zesty::live::stop {} {
 }
 
 proc zesty::live::acquire {owner args} {
+    # Starts the display thread if needed and creates the remote
+    # bar associated with owner.
+    #
+    # owner - [zesty::Bar] application-side object
+    # args  - bar configuration options
+    #
+    # Returns: The name of the remote bar object.
     variable directory
     variable tid
     variable shared
@@ -175,6 +222,12 @@ proc zesty::live::acquire {owner args} {
 }
 
 proc zesty::live::release {owner} {
+    # Removes the remote bar associated with owner, and stops the
+    # display thread when no bar remains.
+    #
+    # owner - [zesty::Bar] application-side object
+    #
+    # Returns: Nothing.
     variable tid
     variable bars
 
@@ -189,9 +242,12 @@ proc zesty::live::release {owner} {
     }
 }
 
-# Resolve user commands where they are defined; never copy procedure bodies or
-# guess which globals, packages or objects a callback might depend on.
 proc zesty::live::columnType {type} {
+    # Checks that a custom column type is associated with a command.
+    #
+    # type - column type
+    #
+    # Returns: The column type.
     if {$type ni {zName zCount zBar zPercent zElapsed zRemaining zSpinner zSeparator} &&
         [uplevel #0 [list namespace which -command $type]] eq ""} {
         error "zesty(error): A command must be associated with '$type' column type."
@@ -200,6 +256,11 @@ proc zesty::live::columnType {type} {
 }
 
 proc zesty::live::validateColumns {args} {
+    # Validates custom column types found in -type and -setColumns options.
+    #
+    # args - configuration options in key-value pairs
+    #
+    # Returns: Nothing.
     zesty::validateKeyValuePairs args $args
     foreach {key value} $args {
         if {$key eq "-type"} {
