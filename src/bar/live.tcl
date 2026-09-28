@@ -8,6 +8,7 @@ namespace eval zesty::live {
     variable shared ""
     variable bars {}
     variable serial 0
+    variable styles ""
 }
 
 oo::class create zesty::Bar {
@@ -73,8 +74,9 @@ oo::class create zesty::Bar {
             zesty::live::validateColumns {*}[lrange $args 1 end]
         }
         zesty::live::check
+        zesty::live::syncStyles
         lassign [thread::send $::zesty::live::tid [list zesty::render::call \
-        $_remoteBar $::zesty::spinnerstyles $method {*}$args]] result _pending fresh
+        $_remoteBar $method {*}$args]] result _pending fresh
         if {$method in {percentage elapsedTime remainingTime formatTime renderBar}} {
             return $result
         }
@@ -214,6 +216,7 @@ proc zesty::live::stop {} {
     # Returns: Nothing.
     variable tid
     variable shared
+    variable styles
     if {$tid eq ""} {return}
     thread::send $tid {zesty::render::stop}
     thread::release $tid
@@ -221,6 +224,22 @@ proc zesty::live::stop {} {
     tsv::unset $shared
     set tid ""
     set shared ""
+    set styles ""
+
+    return {}
+}
+
+proc zesty::live::syncStyles {} {
+    # Sends spinner styles to the display thread if they have
+    # changed since the last call.
+    #
+    # Returns: Nothing.
+    variable tid
+    variable styles
+    if {$styles ne $::zesty::spinnerstyles} {
+        thread::send $tid [list set ::zesty::spinnerstyles $::zesty::spinnerstyles]
+        set styles $::zesty::spinnerstyles
+    }
 
     return {}
 }
@@ -272,7 +291,7 @@ proc zesty::live::acquire {owner args} {
             thread::send $tid [list zesty::render::start $directory $shared]
         }
         zesty::live::check
-        thread::send $tid [list set zesty::spinnerstyles $::zesty::spinnerstyles]
+        zesty::live::syncStyles
         set remote [thread::send $tid [list zesty::render::add $owner {*}$args]]
         dict set bars $owner $remote
         return $remote
