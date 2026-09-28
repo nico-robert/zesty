@@ -11,6 +11,7 @@ Create beautiful command-line interfaces with styled text, progress bars, tables
 - 📋 Tables - Auto-sizing, text wrapping, scrolling, styling.  
 - 📦 Boxes - Multiple border styles, title positioning, padding.  
 - 🔧 JSON Decoder - Pretty-print JSON with syntax highlighting.
+- 🖍️ Code Highlights - Tcl code syntax highlighting powered by tree-sitter, with line numbers, whitespace and indent guides.
 
 ## Requirements :
 - [Tcl](https://www.tcl.tk/) 8.6 or higher
@@ -19,7 +20,9 @@ Create beautiful command-line interfaces with styled text, progress bars, tables
     - [twapi](https://github.com/apnadkarni/twapi) or [tcl-cffi](https://github.com/apnadkarni/tcl-cffi) >= 2.0
   - Unix/Linux: 
     - Terminal with ANSI escape sequence support
-- huddle::json package from [Tcllib](https://core.tcl-lang.org/tcllib/doc/trunk/embedded/index.md) (optional for JSON formatting)
+#### Optional Dependencies :
+- huddle::json package from [Tcllib](https://core.tcl-lang.org/tcllib/doc/trunk/embedded/index.md) (For JSON formatting)
+- [tst](https://github.com/nico-robert/tst) package (For code Tcl syntax highlighting)
 
 ## Cross-Platform :
 - Windows, Linux, macOS support.
@@ -98,6 +101,24 @@ echo [zesty::jsonDecode -json $json -showLinesNumber 1 -style {
     lineNum {fg 254 reverse 1}
 }]
 ```
+🖍️ Code Highlights
+```tcl
+# Syntax-highlight a block of Tcl code
+set code {
+proc hello {name} {
+    puts "Hello, $name!"
+}
+}
+
+echo [zesty::codeHighlights -code $code -linesNumber {show true}]
+
+# Custom colors per token type + whitespace/indent guides
+echo [zesty::codeHighlights -code $code \
+    -style {keyword {fg cyan bold 1} string {fg green} comment {fg 8 italic 1}} \
+    -whiteSpace {show true} \
+    -verticalGuides {show true}
+]
+```
 ## Documentation :
 
 ### Echo command :
@@ -110,9 +131,12 @@ zesty::echo text ?options?
 | args           | Description               
 | ------         | ------                    
 | _-style_       | Style specifications      
+| _-filters_     | Apply style filters (num, email, url)
+| _-command_     | Command to execute on the text before display
+| _-escape_map_  | Key-value pairs for escaping style tag characters
 | _-n_           | No newline        
 | _-noreset_     | Don't reset formatting      
-| _-filters_     | Apply style filters (num, email, url)
+| _-raw_         | Display raw text, bypassing style parsing
 
 ### Progress Bars command :
 
@@ -211,6 +235,27 @@ args                            |Description
 |_-dumpJSONOptions_             | formatting huddle options
 |_-style_                       | styling specifications
 |_-showLinesNumber_             | whether to show line numbers
+
+### Code Highlights command :
+The `zesty::codeHighlights` command syntax-highlights `Tcl` code using tree-sitter (via the [tst](https://github.com/nico-robert/tst) package):
+```tcl
+zesty::codeHighlights ?options?
+```
+#### Options:
+args                    |Description
+| ------                | ------
+|_-code_                | Tcl code to highlight
+|_-style_                | style specifications per token type (keyword, expression, string, number, tcloo, function, comment, pBrace, pBracket, delimiter, parent, conditional, namespace, custom)
+|_-linesNumber_          | show/style line numbers
+|_-whiteSpace_           | show/style visible whitespace characters
+|_-verticalGuides_       | show/style vertical indent guides
+|_-scmFile_              | custom `.scm` tree-sitter query file
+|_-isUTF8_               | whether the input code is already UTF-8 encoded
+|_-words_                | list of custom words to highlight with the `custom` style
+|_-maxlen_               | maximum line length before truncation (defaults to terminal width)
+
+> [!NOTE]
+> Requires the [tst](https://github.com/nico-robert/tst) package to be installed for code Tcl syntax highlighting.
 
 ### Color support :  
 **zesty** supports multiple color formats:
