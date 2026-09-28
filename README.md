@@ -142,9 +142,15 @@ zesty::echo text ?options?
 ### Progress Bars command :
 
 > [!IMPORTANT]    
-> The `zesty::Bar` class relies heavily on Tcl's event loop for rendering updates and animations. 
-This has critical implications for your application design.
-Any blocking operation (e.g., `after` ms, `vwait`, synchronous I/O) will suspend the event loop and freeze progress bar updates.
+> Progress bars are rendered by a dedicated display thread ([Thread](https://core.tcl-lang.org/thread) package required).
+> Animations, spinners and time columns keep updating even while your code is blocked (long computation, synchronous I/O, `after` ms...).  
+> Custom columns and `-format` callbacks run in your interpreter: they are refreshed on each method call (`advance`, `update`...),
+> or between calls only while the Tcl event loop is running.  
+> While a bar is live, write messages with `zesty::echo` (displayed above the bars), a plain `puts` may be overwritten.
+
+> [!TIP]    
+> Each method call on a bar is a synchronous round trip to the display thread (a few tens of microseconds).
+> In very tight loops, advance by batches, e.g. `$bar advance $task 1000` every 1000 items instead of 1000 calls.
 
 Create a progress bar with default columns and options :
 ```tcl
