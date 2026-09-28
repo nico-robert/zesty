@@ -223,13 +223,13 @@ proc download_file {filename size {speed 512}} {
         vwait forever
     }
     
-    # Display success message
-    zesty::echo "\nDownload of $filename completed:\
-    $size KB in [format "%.1f" [expr {([clock milliseconds] - $start_time) / 1000.0}]] seconds"
-    
     # Free resources
     $pb cleanup
     $pb destroy
+
+    # Display success message
+    zesty::echo "\nDownload of $filename completed:\
+    $size KB in [format "%.1f" [expr {([clock milliseconds] - $start_time) / 1000.0}]] seconds"
 }
 
 test_progress_extended
