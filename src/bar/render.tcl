@@ -193,7 +193,7 @@ proc zesty::render::draw {{force 0}} {
     if {!$interactive} {
         # Redirected output is a final snapshot, not an animation log.
         if {$force && [llength $lines]} {
-            puts stdout [join $lines \n]
+            zesty::echo -raw [join $lines \n]
             flush stdout
         }
         set previous $lines
@@ -210,7 +210,7 @@ proc zesty::render::draw {{force 0}} {
         append output "\033\[J"
     }
 
-    puts -nonewline stdout $output
+    zesty::echo -raw -n $output
     flush stdout
     set rows [llength $lines]
     set previous $lines
@@ -228,7 +228,7 @@ proc zesty::render::erase {} {
     variable interactive
 
     if {$interactive && $rows} {
-        puts -nonewline stdout "\r\033\[${rows}A\033\[J"
+        zesty::echo -raw -n "\r\033\[${rows}A\033\[J"
         flush stdout
     }
     set rows 0
@@ -306,7 +306,7 @@ proc zesty::render::remove {name} {
         if {!$interactive} {
             # Each removed bar gets exactly one final snapshot in a pipe/file.
             foreach line [$bar lines [clock milliseconds] {*}$size] {
-                puts stdout [zesty::extractVisibleText [string map [list \n " " \r " " \t " "] $line]]
+                zesty::echo -raw [zesty::extractVisibleText [string map [list \n " " \r " " \t " "] $line]]
             }
             flush stdout
         } elseif {!$partial && [dict size $objects] > 1} {
