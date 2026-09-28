@@ -181,6 +181,20 @@ proc zesty::live::stop {} {
     set shared ""
 }
 
+proc zesty::live::write {text newline} {
+    # Sends a formatted message to the display thread, which writes it
+    # above the live region.
+    #
+    # text    - formatted text (with ANSI codes)
+    # newline - 1 to append a newline, 0 otherwise
+    #
+    # Returns: Nothing.
+    variable tid
+    zesty::live::check
+    thread::send $tid [list zesty::render::withMessage $text $newline]
+    return {}
+}
+
 proc zesty::live::acquire {owner args} {
     # Starts the display thread if needed and creates the remote
     # bar associated with owner.
@@ -197,6 +211,10 @@ proc zesty::live::acquire {owner args} {
 
     try {
         if {$tid eq ""} {
+            # Thread is only needed by progress bars: load it on first use.
+            if {[catch {package require Thread} msg]} {
+                error "zesty(error): progress bars require the Thread package: $msg"
+            }
             set shared "zesty-display-[thread::id]-[incr serial]"
             ::flush stdout
             set tid [thread::create -joinable -preserved]
