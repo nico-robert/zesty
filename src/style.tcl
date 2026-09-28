@@ -274,7 +274,7 @@ proc zesty::echo {args} {
     #   text                        - text content to display
     #
     # Returns: nothing, outputs formatted text to stdout.
-    set text ""
+    set textParts {}
     set styleList {}
     set filters {}
     set addNewline 1
@@ -314,13 +314,12 @@ proc zesty::echo {args} {
             "-noreset" {set noReset 1}
             "-raw"     {set raw 1}
             default {
-                append text $arg
-                if {$i < [llength $args] - 1} {
-                    append text " "
-                }
+                lappend textParts $arg
             }
         }
     }
+    set text [join $textParts " "]
+
     if {$raw} {
         set output $text
     } else {
