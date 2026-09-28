@@ -254,6 +254,19 @@ proc test_gradient {} {
     zesty::echo "Gradient completed"
 }
 
+proc test_hyperlinks {} {
+    zesty::echo "\n=== Test 14: Hyperlinks ==="
+
+    # URLs detected by the 'url' filter become clickable with 'link 1'.
+    zesty::echo "Tcl website: https://www.tcl-lang.org, and zesty: https://github.com/nico-robert/zesty." \
+        -filters {url {fg blue underline 1 link 1}}
+
+    # Any text can be a link with the 'link' attribute of inline tags.
+    zesty::echo "Read <s fg=cyan underline=1 link=https://www.tcl-lang.org/man/>the Tcl manual</s> for details."
+
+    zesty::echo "Hyperlinks completed (Ctrl+click on links in a supporting terminal)"
+}
+
 proc run_all_tests {} {
     zesty::echo "Starting zesty::echo comprehensive tests...\n"
     
@@ -268,7 +281,8 @@ proc run_all_tests {} {
     test_error_handling
     test_interactive_demo
     test_logging_simulation
-    
+    test_hyperlinks
+
     zesty::echo "\n=== All tests completed! ==="
 }
 
@@ -322,9 +336,10 @@ proc interactive_menu {} {
     zesty::echo "11. Logging Simulation" -filters {num {fg cyan}}
     zesty::echo "12. Color Palette" -filters {num {fg cyan}}
     zesty::echo "13. Gradient" -filters {num {fg cyan}}
+    zesty::echo "14. Hyperlinks" -filters {num {fg cyan}}
     zesty::echo "0.  Exit" -filters {num {fg cyan}}
-    
-    zesty::echo -n "Enter choice (0-13): "
+
+    zesty::echo -n "Enter choice (0-14): "
     flush stdout
     gets stdin choice
     
@@ -342,6 +357,7 @@ proc interactive_menu {} {
         11 { test_logging_simulation }
         12 { show_color_palette }
         13 { test_gradient }
+        14 { test_hyperlinks }
         0  { zesty::echo "Exiting..."; return }
         default { zesty::echo "Invalid choice. Please try again." }
     }
