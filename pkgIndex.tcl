@@ -2,11 +2,9 @@
 # Distributed under MIT license. Please see LICENSE for details.
 
 package ifneeded zesty 0.2 [list apply {dir {
-    package require platform
-
     source -encoding utf-8 [file join $dir zesty.tcl]
     
-    if {[platform::generic] eq "win32-x86_64"} {
+    if {$::tcl_platform(platform) eq "windows"} {
         package require registry
         source -encoding utf-8 [file join $dir src win32.tcl]
     }
