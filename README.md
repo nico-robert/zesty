@@ -21,6 +21,7 @@ Create beautiful command-line interfaces with styled text, progress bars, tables
   - Unix/Linux: 
     - Terminal with ANSI escape sequence support
 #### Optional Dependencies :
+- [Thread](https://core.tcl-lang.org/thread) package (For progress bars)
 - huddle::json package from [Tcllib](https://core.tcl-lang.org/tcllib/doc/trunk/embedded/index.md) (For JSON formatting)
 - [tst](https://github.com/nico-robert/tst) package (For code Tcl syntax highlighting)
 
