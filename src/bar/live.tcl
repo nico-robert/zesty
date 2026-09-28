@@ -16,6 +16,7 @@ oo::class create zesty::Bar {
     variable _timer 
     variable _due 
     variable _pending
+    variable _callbackErrors
 
     constructor {args} {
         # Creates the application-side proxy of the progress bar and its
@@ -28,6 +29,7 @@ oo::class create zesty::Bar {
         set _timer ""
         set _due 0
         set _pending 0
+        set _callbackErrors {}
         zesty::live::validateColumns {*}$args
         set _remoteBar [zesty::live::acquire [self] {*}$args]
     }
@@ -52,6 +54,8 @@ oo::class create zesty::Bar {
             error "zesty(error): destroy cannot run inside a column callback"
         }
         next
+
+        return {}
     }
 
     method Call {method args} {
@@ -83,6 +87,7 @@ oo::class create zesty::Bar {
             my Refresh
         }
         my Schedule
+
         return $result
     }
 
@@ -97,6 +102,8 @@ oo::class create zesty::Bar {
         if {$_pending && !$_refreshing} {
             set _timer [after 100 [list [self] tick]]
         }
+
+        return {}
     }
 
     method tick {} {
@@ -106,6 +113,8 @@ oo::class create zesty::Bar {
         set _timer ""
         my Refresh
         my Schedule
+
+        return {}
     }
 
     method Refresh {} {
@@ -122,7 +131,13 @@ oo::class create zesty::Bar {
             set values {}
             foreach job $jobs {
                 lassign $job task column command
-                dict set values $task $column [uplevel #0 $command]
+                if {[catch {uplevel #0 $command} value options] == 1} {
+                    my ReportCallbackError $task $column $value $options
+                    set value "ERR"
+                } else {
+                    dict unset _callbackErrors $column
+                }
+                dict set values $task $column $value
             }
             # TSV carries only callback results. Task state belongs solely to
             # the remote object, and no worker ever waits for the owner.
@@ -134,6 +149,30 @@ oo::class create zesty::Bar {
         } finally {
             set _refreshing 0
         }
+
+        return {}
+    }
+
+    method ReportCallbackError {task column message options} {
+        # Reports a column callback error once per column, through the
+        # standard background error mechanism (interp bgerror).
+        #
+        # task    - task identifier
+        # column  - column number
+        # message - error message returned by catch
+        # options - error options dictionary returned by catch
+        #
+        # Returns: Nothing.
+        if {[dict exists $_callbackErrors $column]} {return}
+        dict set _callbackErrors $column 1
+        set message "zesty(error): callback of column '$column'\
+            (task '$task') failed: $message"
+        dict append options -errorinfo \
+            "\n    (zesty::Bar column '$column' callback, task '$task')"
+        # Deferred: the report must not interrupt the current refresh.
+        after 0 [list return -options $options $message]
+
+        return {}
     }
 
     method getONSClass {} {
@@ -147,6 +186,7 @@ proc zesty::live::active {} {
     #
     # Returns: 1 if the display thread is running, 0 otherwise.
     variable tid
+
     return [expr {$tid ne ""}]
 }
 
@@ -164,6 +204,8 @@ proc zesty::live::check {} {
         lassign [tsv::get $shared error] message options
         return -options $options $message
     }
+
+    return {}
 }
 
 proc zesty::live::stop {} {
@@ -179,6 +221,8 @@ proc zesty::live::stop {} {
     tsv::unset $shared
     set tid ""
     set shared ""
+
+    return {}
 }
 
 proc zesty::live::write {text newline} {
@@ -192,6 +236,7 @@ proc zesty::live::write {text newline} {
     variable tid
     zesty::live::check
     thread::send $tid [list zesty::render::withMessage $text $newline]
+
     return {}
 }
 
@@ -258,6 +303,8 @@ proc zesty::live::release {owner} {
             zesty::live::stop
         }
     }
+
+    return {}
 }
 
 proc zesty::live::columnType {type} {
@@ -270,6 +317,7 @@ proc zesty::live::columnType {type} {
         [uplevel #0 [list namespace which -command $type]] eq ""} {
         error "zesty(error): A command must be associated with '$type' column type."
     }
+
     return $type
 }
 
@@ -292,6 +340,8 @@ proc zesty::live::validateColumns {args} {
             }
         }
     }
+
+    return {}
 }
 
 # Keep public method discovery useful. All task operations use the same relay.
