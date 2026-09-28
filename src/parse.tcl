@@ -142,6 +142,10 @@ proc zesty::parseTypeFilters {text filters} {
             "email" {
                 # Pattern for email addresses
                 set pattern {([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})}
+                # A clickable email address opens the mail client.
+                if {[dict exists $style link] && [string is true -strict [dict get $style link]]} {
+                    dict set style link "mailto:\\1"
+                }
             }
             "url" {
                 # Pattern for URLs (trailing punctuation is not part of the link).
