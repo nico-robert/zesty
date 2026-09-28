@@ -670,13 +670,12 @@ proc zesty::showCursor {} {
 }
 
 proc zesty::throwError {msg} {
-    # Throws an error.
+    # Throws an error, restoring the cursor visibility first.
     #
     # msg - error message
     #
-    # Returns error message. 
+    # Returns: Nothing, raises an error.
 
-    zesty::resetTerminal
     zesty::showCursor
 
     return -code error "zesty(error): $msg"
