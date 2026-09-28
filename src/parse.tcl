@@ -23,8 +23,9 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
     if {[llength $filters] > 0} {
         set result [zesty::parseTypeFilters $result $filters]
     } elseif {$command ne ""} {
-        if {[info commands $command] eq ""} {
-            zesty::throwError "'$command' is not a valid command."
+        set name [lindex $command 0]
+        if {[uplevel #0 [list namespace which -command $name]] eq ""} {
+            zesty::throwError "'$name' is not a valid command."
         }
         set result [uplevel #0 [list {*}$command $text]]
     }
