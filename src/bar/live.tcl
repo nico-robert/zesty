@@ -203,7 +203,8 @@ proc zesty::live::check {} {
         error "zesty(error): display thread is not running"
     }
     if {[tsv::exists $shared error]} {
-        lassign [tsv::get $shared error] message options
+        # Reported once; the render loop records it again if it persists.
+        lassign [tsv::pop $shared error] message options
         return -options $options $message
     }
 
