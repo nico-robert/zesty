@@ -121,11 +121,9 @@ oo::class create zesty::Bar {
 
     }
 
-    method Display {{refreshCustom 1}} {
+    method Display {} {
         # Invalidates the cached frame and updates the completion status.
         # The actual terminal write is done by the render thread timer.
-        #
-        # refreshCustom - Unused, kept for compatibility
         #
         # Returns: Nothing.
         set _paused 0
@@ -626,7 +624,7 @@ oo::class create zesty::Bar {
         set _has_spinner_column [my HasSpinnerColumn]
         set _cache_valid 0  ;# Invalidate cache
         my CustomColumns
-        my Display 0
+        my Display
 
         return {}
     }
@@ -712,7 +710,7 @@ oo::class create zesty::Bar {
         dict set _tasks $task_id $task
         incr _customGeneration
         set _customFresh 0
-        my Display 0
+        my Display
         return $task_id
     }
 
