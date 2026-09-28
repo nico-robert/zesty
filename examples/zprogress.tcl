@@ -347,6 +347,8 @@ proc test_error_handling {} {
     catch {zesty::Bar new -minBarWidth 2} msg4
     catch {$bar configureColumn 0 -align "invalid"} msg5
 
+    $bar destroy
+
     zesty::echo $msg1
     zesty::echo $msg2
     zesty::echo $msg3
