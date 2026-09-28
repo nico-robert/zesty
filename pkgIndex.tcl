@@ -3,6 +3,7 @@
 
 package ifneeded zesty 0.2 [list apply {dir {
     package require platform
+    package require Thread
 
     source -encoding utf-8 [file join $dir zesty.tcl]
     
