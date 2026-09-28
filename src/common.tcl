@@ -75,7 +75,8 @@ proc zesty::wrapText {text maxWidth {noWrap 0} {ellipsisWidth 3}} {
                 return [list [string repeat "." $maxWidth]]
             }
 
-            set truncated [zesty::smartTruncateStyledText $text $truncateWidth 1]
+            # smartTruncateStyledText reserves the room for the ellipsis itself.
+            set truncated [zesty::smartTruncateStyledText $text $maxWidth 1]
             if {$truncated eq ""} {
                 return [list [string repeat "." [expr {min($maxWidth, $ellipsisWidth)}]]]
             }
@@ -323,7 +324,7 @@ proc zesty::smartTruncateStyledText {styled_text target_length add_ellipsis} {
     foreach segment $segments {
         set type [lindex $segment 0]
         set content [lindex $segment 1]
-        set content_length [string length $content]
+        set content_length [zesty::strLength $content]
         
         if {$visible_count + $content_length <= $effective_target} {
             # Complete segment fits
@@ -338,12 +339,14 @@ proc zesty::smartTruncateStyledText {styled_text target_length add_ellipsis} {
             # Segment must be truncated
             set remaining_space [expr {$effective_target - $visible_count}]
             if {$remaining_space > 0} {
-                set truncated_content [string range $content 0 $remaining_space-1]
+                set truncated_content [zesty::truncateToWidth $content $remaining_space]
+                # A wide character that does not fit leaves a gap: fill it.
+                set gap [string repeat " " [expr {$remaining_space - [zesty::strLength $truncated_content]}]]
                 if {$type eq "styled"} {
                     set attributes [lindex $segment 2]
-                    append result "<s $attributes>${truncated_content}${addEllipsis}</s>"
+                    append result "<s $attributes>${truncated_content}${addEllipsis}${gap}</s>"
                 } else {
-                    append result "${truncated_content}${addEllipsis}"
+                    append result "${truncated_content}${addEllipsis}${gap}"
                 }
             }
             break
@@ -429,6 +432,10 @@ proc zesty::strLength {text} {
     # Returns the visual width of the string.
 
     if {$text eq ""} {return 0}
+    # Fast path: printable ASCII only, one column per character.
+    if {[regexp {^[\x20-\x7E]*$} $text]} {
+        return [string length $text]
+    }
     set width 0
 
     for {set i 0} {$i < [string length $text]} {incr i} {
@@ -455,6 +462,8 @@ proc zesty::strLength {text} {
             ($codepoint >= 0xF900 && $codepoint <= 0xFAFF) || 
             ($codepoint >= 0xFF00 && $codepoint <= 0xFFEF) || 
             ($codepoint >= 0x1F300 && $codepoint <= 0x1F9FF) ||
+            ($codepoint >= 0x1FA70 && $codepoint <= 0x1FAFF) ||
+            ($codepoint >= 0x20000 && $codepoint <= 0x3FFFD) ||
             ($codepoint >= 0x2600 && $codepoint <= 0x26FF) || 
             ($codepoint >= 0x2700 && $codepoint <= 0x27BF) || 
             ($codepoint >= 0x2300 && $codepoint <= 0x23FF) || 
@@ -467,6 +476,36 @@ proc zesty::strLength {text} {
     }
     
     return $width
+}
+
+proc zesty::truncateToWidth {text maxWidth} {
+    # Truncates a plain text to a maximum visual width in terminal
+    # columns, taking wide characters (emojis, CJK) into account.
+    #
+    # text     - plain text (no style tags)
+    # maxWidth - maximum width in terminal columns
+    #
+    # Returns: The longest beginning of text fitting in maxWidth columns.
+    set width 0
+    set i 0
+    foreach char [split $text ""] {
+        set w [zesty::strLength $char]
+        if {$width + $w > $maxWidth} {break}
+        incr width $w
+        incr i
+    }
+    set result [string range $text 0 $i-1]
+
+    # Tcl 8.6 stores emojis as surrogate pairs (two characters):
+    # never keep half of one. No effect with Tcl 9.
+    if {$result ne ""} {
+        scan [string index $result end] %c last
+        if {$last >= 0xD800 && $last <= 0xDBFF} {
+            set result [string range $result 0 end-1]
+        }
+    }
+
+    return $result
 }
 
 proc zesty::formatTextWithAlignment {text width align preserveStyles ellipsisThreshold} {
@@ -491,20 +530,16 @@ proc zesty::formatTextWithAlignment {text width align preserveStyles ellipsisThr
 
     if {$visible_length > $width} {
         if {$preserveStyles} {
-            if {$width > $ellipsisThreshold} {
-                # Preserving styled tags and add "..."
-                return [zesty::smartTruncateStyledText $text [expr {$width - 3}] "true"]
-            } else {
-                # Simply truncate preserving tags
-                return [zesty::smartTruncateStyledText $text $width "false"]
-            }
-        } else {
-            if {$width > $ellipsisThreshold} {
-                return "[string range $text 0 $width-4]..."
-            } else {
-                return [string range $text 0 $width-1]
-            }
+            # smartTruncateStyledText reserves the room for the ellipsis itself.
+            return [zesty::smartTruncateStyledText $text $width [expr {$width > $ellipsisThreshold}]]
         }
+        if {$width > $ellipsisThreshold} {
+            set truncated "[zesty::truncateToWidth $text [expr {$width - 3}]]..."
+        } else {
+            set truncated [zesty::truncateToWidth $text $width]
+        }
+        # A wide character that does not fit leaves a gap: fill it.
+        return "$truncated[string repeat " " [expr {$width - [zesty::strLength $truncated]}]]"
     }
     
     # Text alignment.
