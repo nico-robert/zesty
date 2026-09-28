@@ -264,6 +264,9 @@ proc test_hyperlinks {} {
     # Any text can be a link with the 'link' attribute of inline tags.
     zesty::echo "Read <s fg=cyan underline=1 link=https://www.tcl-lang.org/man/>the Tcl manual</s> for details."
 
+    # Email addresses open the mail client with 'link 1' (mailto:).
+    zesty::echo "Contact: contact@example.com." -filters {email {fg green underline 1 link 1}}
+
     zesty::echo "Hyperlinks completed (Ctrl+click on links in a supporting terminal)"
 }
 
