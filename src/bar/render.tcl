@@ -206,36 +206,27 @@ proc zesty::render::erase {} {
     set previous {}
 }
 
-# Coordinate the live region; zesty::echo remains the only message formatter
-# and writer. No calls back into the owner are made from this interpreter.
-proc zesty::render::withMessage {args result} {
-    # Erases the live region, prints a message with zesty::echo,
-    # then redraws the bars.
+proc zesty::render::withMessage {text newline} {
+    # Erases the live region, writes a message formatted by the
+    # application thread, then redraws the bars below it.
     #
-    # args   - zesty::echo arguments
-    # result - value returned by echoCallback during the echo
+    # text    - formatted text
+    # newline - 1 to append a newline, 0 otherwise
     #
     # Returns: Nothing.
-    variable callbackResult
-    set callbackResult $result
     zesty::render::erase
     try {
-        zesty::echo {*}$args
+        if {$newline} {
+            zesty::echo -raw $text
+        } else {
+            zesty::echo -raw -n $text
+        }
     } finally {
-        unset callbackResult
         flush stdout
+        zesty::render::messageWritten $text $newline
         zesty::render::draw
     }
-}
-
-proc zesty::render::echoCallback {text} {
-    # Callback used by zesty::echo inside withMessage.
-    #
-    # text - text passed by zesty::echo (unused)
-    #
-    # Returns: The callback result set by withMessage.
-    variable callbackResult
-    return $callbackResult
+    return {}
 }
 
 proc zesty::render::messageWritten {text newline} {
