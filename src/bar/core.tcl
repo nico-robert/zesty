@@ -436,6 +436,19 @@ oo::class create zesty::Bar {
         return {}
     }
 
+    method BgBarChar {} {
+        # Gets the character for the progress bar background. Without
+        # colors (NO_COLOR), a background identical to the fill
+        # character would hide the progress: a thin line is used instead.
+        #
+        # Returns: The background character.
+        set bg [dict get $_options bgBarChar]
+        if {[zesty::noColor] && $bg eq [dict get $_options barChar]} {
+            return "─"
+        }
+        return $bg
+    }
+
     method RenderSpinner {task_id width} {
         # Renders animated spinner for a task.
         #
@@ -912,7 +925,7 @@ oo::class create zesty::Bar {
             # Create bar
             set bar ""
             set b  [string repeat [dict get $_options barChar] $completed_width]
-            set bg [string repeat [dict get $_options bgBarChar] [expr {$width - $completed_width}]]
+            set bg [string repeat [my BgBarChar] [expr {$width - $completed_width}]]
 
             append bar [zesty::parseStyleDictToXML $b  [list fg $fg_color]]
             append bar [zesty::parseStyleDictToXML $bg [list fg $bg_color]]
@@ -983,7 +996,7 @@ oo::class create zesty::Bar {
 
         # Segment before animation
         if {$start_pos > 0} {
-            set before_chars [string repeat [dict get $_options bgBarChar] $start_pos]
+            set before_chars [string repeat [my BgBarChar] $start_pos]
             append result [zesty::parseStyleDictToXML $before_chars [list fg $bg_color]]
         }
 
@@ -995,7 +1008,7 @@ oo::class create zesty::Bar {
         set end_pos [expr {$start_pos + $block_size}]
         if {$end_pos < $width} {
             set after_length [expr {$width - $end_pos}]
-            set after_chars [string repeat [dict get $_options bgBarChar] $after_length]
+            set after_chars [string repeat [my BgBarChar] $after_length]
             append result [zesty::parseStyleDictToXML $after_chars [list fg $bg_color]]
         }
 
@@ -1048,7 +1061,7 @@ oo::class create zesty::Bar {
 
         # Segment before animation (left)
         if {$start_pos > 0} {
-            set before_chars [string repeat [dict get $_options bgBarChar] $start_pos]
+            set before_chars [string repeat [my BgBarChar] $start_pos]
             append result [zesty::parseStyleDictToXML $before_chars [list fg $bg_color]]
         }
 
@@ -1062,7 +1075,7 @@ oo::class create zesty::Bar {
         set end_pos [expr {$start_pos + $block_size}]
         if {$end_pos < $width} {
             set after_length [expr {$width - $end_pos}]
-            set after_chars [string repeat [dict get $_options bgBarChar] $after_length]
+            set after_chars [string repeat [my BgBarChar] $after_length]
             append result [zesty::parseStyleDictToXML $after_chars [list fg $bg_color]]
         }
 
@@ -1112,7 +1125,7 @@ oo::class create zesty::Bar {
                 set chars_to_add [expr {min($chars_in_this_segment, $width - $current_pos)}]
 
                 if {$chars_to_add > 0} {
-                    set segment_chars [string repeat [dict get $_options bgBarChar] $chars_to_add]
+                    set segment_chars [string repeat [my BgBarChar] $chars_to_add]
                     append result [zesty::parseStyleDictToXML $segment_chars [list fg $bg_color]]
                     set current_pos [expr {$current_pos + $chars_to_add}]
                 }
