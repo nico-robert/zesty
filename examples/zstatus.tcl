@@ -48,3 +48,23 @@ if {[catch {
 } msg]} {
     zesty::echo "$fail Report not sent: $msg"
 }
+
+zesty::echo "\n• Several commands inside one status:"
+set report [zesty::status "Analyzing example files..." {
+    set files [glob -nocomplain -directory [file dirname [info script]] *.tcl]
+    set lines 0
+    set procs 0
+    foreach file $files {
+        set fh [open $file]
+        set data [read $fh]
+        close $fh
+        incr lines [llength [split $data \n]]
+        incr procs [regexp -all -line {^\s*proc } $data]
+        after 150   ;# slow down to see the spinner
+    }
+    format "%d files, %d lines, %d procs" [llength $files] $lines $procs
+}]
+zesty::echo "$ok $report"
+
+# Variables set inside the script live in the caller's context.
+zesty::echo "  Variables created inside the script are still available: [llength $files] files"
