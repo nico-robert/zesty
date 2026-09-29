@@ -953,7 +953,9 @@ proc zesty::typeOf {value} {
         return num
     }
 
-    if {[info commands $value] ne ""} {
+    # Exact lookup: 'info commands' would treat the value as a glob
+    # pattern ('*' matches every command).
+    if {[namespace which -command $value] ne ""} {
         return cmd
     }
 
