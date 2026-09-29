@@ -8,8 +8,11 @@ Create beautiful command-line interfaces with styled text, progress bars, tables
 
 - 🎨 Rich Text Styling - 256 colors, text formatting, gradients.   
 - 📊 Progress Bars - Multiple tasks, animations, custom columns.  
+- ⏳ Status - Animated spinner with a message while a script runs.  
 - 📋 Tables - Auto-sizing, text wrapping, scrolling, styling.  
 - 📦 Boxes - Multiple border styles, title positioning, padding.  
+- ➖ Rules - Horizontal separators with an optional title.  
+- 🌳 Trees - Tree views from nested dictionaries.  
 - 🔧 JSON Decoder - Pretty-print JSON with syntax highlighting.
 - 🖍️ Code Highlights - Tcl code syntax highlighting powered by tree-sitter, with line numbers, whitespace and indent guides.
 
@@ -48,6 +51,10 @@ echo [zesty::gradient "Rainbow Text" "red" "yellow"]
 # Apply a filter to the numerical values.
 echo "1. Basic Echo" -filters {num {fg cyan}}
 
+# Clickable links (e.g. Ctrl+click in Windows Terminal)
+echo "Docs: https://www.tcl-lang.org" -filters {url {fg blue underline 1 link 1}}
+echo "See <s fg=blue underline=1 link=https://www.tcl-lang.org>the Tcl website</s>"
+
 ```
 📊 Progress Bars
 ```tcl
@@ -59,6 +66,14 @@ set task [$bar addTask -name "Downloading..." -total 100]
 zesty::loop -start 0 -end 100 -delay 50 {
     $bar advance $task 1
 }
+```
+⏳ Status
+```tcl
+# Spinner while the script runs, then the message stays on screen
+zesty::status "Connecting to database..." {
+    connect_db
+}
+echo "<s fg=green>Connected</s>"
 ```
 📋 Tables
 ```tcl
@@ -85,6 +100,23 @@ echo [zesty::box \
     -content {text "Your content here"} \
     -padding 2
 ]
+```
+➖ Rules
+```tcl
+# Full terminal width rule with a centered title
+echo [zesty::rule -title {name "Section"}]
+
+# Left aligned title, custom character and maximum width
+echo [zesty::rule -title {name "Results" align left} -char "═" -width 40]
+```
+🌳 Trees
+```tcl
+# Each key is a node, its value is the dictionary of its children
+set project {
+    src {bar {core.tcl {} render.tcl {}} utils.tcl {}}
+    README.md {}
+}
+echo [zesty::tree $project -root "zesty" -type rounded]
 ```
 🔧 JSON Formatting
 ```tcl
@@ -132,7 +164,7 @@ zesty::echo text ?options?
 | args           | Description               
 | ------         | ------                    
 | _-style_       | Style specifications      
-| _-filters_     | Apply style filters (num, email, url)
+| _-filters_     | Apply style filters (num, email, url). Use `link 1` in the url or email style to make links clickable
 | _-command_     | Command to execute on the text before display
 | _-escape_map_  | Key-value pairs for escaping style tag characters
 | _-n_           | No newline        
@@ -146,7 +178,8 @@ zesty::echo text ?options?
 > Animations, spinners and time columns keep updating even while your code is blocked (long computation, synchronous I/O, `after` ms...).  
 > Custom columns and `-format` callbacks run in your interpreter: they are refreshed on each method call (`advance`, `update`...),
 > or between calls only while the Tcl event loop is running.  
-> While a bar is live, write messages with `zesty::echo` (displayed above the bars), a plain `puts` may be overwritten.
+> While a bar is live, write messages with `zesty::echo`: they are displayed above the bars (a plain `puts` may be overwritten).  
+> To display a message below a finished bar, write it after `$bar destroy`.
 
 > [!TIP]    
 > Each method call on a bar is a synchronous round trip to the display thread (a few tens of microseconds).
@@ -189,6 +222,20 @@ set bar [zesty::Bar new ?options?]
 > [!TIP]    
 > You can create your own column types.   
 
+### Status command :
+Displays an animated spinner followed by a message while a script runs:
+```tcl
+zesty::status ?options? message script
+```
+#### Options:
+args                            |Description
+| ------                        | ------                    
+|_-spinner_                     | spinner style: dots (default), line, circle, emoji, arrows, bars, moon
+
+The script is evaluated in the caller's context and its result is returned.
+When the script ends, the spinner is removed and the message (which may contain
+style tags) stays on screen. Errors are propagated to the caller.
+
 ### Tables command :
 Create formatted tables with automatic sizing:
 ```tcl
@@ -229,6 +276,32 @@ args                            |Description
 |_-paddingX_                    | horizontal padding
 |_-paddingY_                    | vertical padding
 |_-formatCmdBoxMsgtruncated_    | truncation callback command
+
+### Rule command :
+Create horizontal rules, with an optional title:
+```tcl
+zesty::rule ?options?
+```
+#### Options:
+args                            |Description
+| ------                        | ------                    
+|_-title_                       | title configuration (name, style, align: left, center or right)
+|_-style_                       | style of the line
+|_-char_                        | character used to draw the line (default `─`)
+|_-width_                       | maximum width (default: terminal width)
+
+### Tree command :
+Create tree views from nested dictionaries (each key is a node, its value is
+the dictionary of its children, empty for a leaf). Node names may contain style tags:
+```tcl
+zesty::tree data ?options?
+```
+#### Options:
+args                            |Description
+| ------                        | ------                    
+|_-root_                        | root label displayed on the first line
+|_-type_                        | guides type, same as tables: single (default), double, rounded, thick, ascii
+|_-style_                       | style of the guides
 
 ### JSON decoder command :
 The `zesty::jsonDecode` command formats JSON with syntax highlighting:
@@ -273,6 +346,9 @@ args                    |Description
     fg "#FF5733" ; # Hex colors
 }
 ```
+**zesty** respects the [NO_COLOR](https://no-color.org) convention: when the `NO_COLOR` environment
+variable is set to a non-empty value, no color is output. Other styles (bold, underline...) and hyperlinks are kept.
+
 **zesty** uses XML-like tags for inline styling:
 ```xml
 <!--
@@ -306,3 +382,17 @@ Inspired by modern CLI tools and libraries
     - Adds `footer` support for class `Table`.
     - Major code refactoring.
     - Fixes minor bugs.
+*  **29-Sep-2026** : 0.3
+    - Adds `zesty::codeHighlights` command (Tcl syntax highlighting with tree-sitter).
+    - Adds `zesty::rule`, `zesty::status` and `zesty::tree` commands.
+    - Adds clickable links for urls, emails and inline tags.
+    - Adds `-raw` and `-escape_map` options to `zesty::echo`.
+    - Adds `-padding` option to `zesty::box` (fix #1, thanks @Hoffenbar).
+    - Adds `zesty::setTerminalTitle` (camelCase name).
+    - Adds `NO_COLOR` environment variable support.
+    - Progress bars run in a dedicated display thread.
+    - Errors no longer clear the terminal screen.
+    - Fixes `win32.tcl` loading on all Windows platforms.
+    - Fixes `zesty::echo -command` with multi-word commands.
+    - Fixes extra trailing space in `zesty::echo`.
+    - New examples: `zprogress_threaded`, `zrule`, `zstatus`, `ztree`.
