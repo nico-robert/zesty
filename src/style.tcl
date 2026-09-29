@@ -233,22 +233,32 @@ proc zesty::styleANSICode {name} {
 
 proc zesty::colorANSICode {color_code {bg 0}} {
     # Generates ANSI escape code for terminal colors.
+    # No color is generated when the NO_COLOR environment variable
+    # is set to a non-empty value (see https://no-color.org).
     #
     # color_code - numeric color code (0-255)
     # bg         - whether to apply as background color (default: 0)
     #
     # Returns: the ANSI escape sequence for the specified color,
-    # empty string if color_code is empty.
+    # empty string if color_code is empty or colors are disabled.
 
-    if {$color_code ne ""} {
-        if {$bg} {
-            return "\033\[48;5;${color_code}m"
-        } else {
-            return "\033\[38;5;${color_code}m"
-        }
+    if {$color_code eq "" || [zesty::noColor]} {
+        return {}
     }
+    if {$bg} {
+        return "\033\[48;5;${color_code}m"
+    }
+    return "\033\[38;5;${color_code}m"
+}
 
-    return {}
+proc zesty::noColor {} {
+    # Checks if colors are disabled by the NO_COLOR environment variable.
+    #
+    # Returns: true if NO_COLOR is set to a non-empty value, false otherwise.
+    return [expr {
+        [info exists ::env(NO_COLOR)] && 
+        $::env(NO_COLOR) ne ""
+    }]
 }
 
 proc zesty::resetANSIStyle {} {
