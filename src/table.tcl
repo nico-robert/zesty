@@ -626,7 +626,7 @@ oo::class create zesty::Table {
             # For noWrap columns, this is the minimum width we need
             if {$noWrap} {
                 # Store this as a special requirement
-                dict set $_column_options $i _requiredWidth $naturalWidth
+                dict set _column_options $i _requiredWidth $naturalWidth
             }
 
             lappend naturalWidths $naturalWidth
@@ -893,7 +893,6 @@ oo::class create zesty::Table {
         # For noWrap columns, ensure minimum is the required width
         if {$noWrap && [dict exists $_column_options $colIndex _requiredWidth]} {
             set requiredWidth [dict get $_column_options $colIndex _requiredWidth]
-            set requiredWithPadding [expr {$requiredWidth + (2 * $pad)}]
 
             # The minimum for noWrap is the larger of configured minimum or required width
             set minAllowed [expr {max(($colMinWidth > 0 ? $colMinWidth : 5), $requiredWidth)}]
