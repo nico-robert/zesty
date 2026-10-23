@@ -277,8 +277,10 @@ proc zesty::colorInfo {color_name} {
     } else {
         puts "Color '$color_name' not found"
         
-        # If it's potentially a hex value, give suggestions
-        if {[zesty::isValidHex]} {
+        # If it's potentially a hex value, give suggestions. A valid
+        # hex value always resolves to the closest color, so only
+        # malformed ones get here.
+        if {[zesty::looksLikeHex $color_name]} {
             puts "Suggestion: Check that the hexadecimal value is correct"
             puts "Expected format: #ff0000 or ff0000"
         }
@@ -623,6 +625,27 @@ proc zesty::isValidHex {hex} {
     
     # Check that it's exactly 6 hexadecimal characters
     return [regexp {^[0-9a-fA-F]{6}$} $hex_clean]
+}
+
+proc zesty::looksLikeHex {value} {
+    # Checks if a string looks like an attempt at a hexadecimal
+    # color, valid or not. Unlike zesty::isValidHex, the length
+    # and the characters after '#' are not checked.
+    #
+    # value - string to check
+    #
+    # Returns true if string starts with '#', or contains only
+    # hexadecimal characters without being an integer, false
+    # otherwise.
+
+    if {[string index $value 0] eq "#"} {
+        return 1
+    }
+
+    return [expr {
+        [regexp {^[0-9a-fA-F]+$} $value] &&
+        ![string is integer -strict $value]
+    }]
 }
 
 proc zesty::resetTerminal {} {
