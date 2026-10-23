@@ -85,7 +85,8 @@ proc test_custom_columns {} {
     
     set task1 [$bar addTask -name "Processing data..." -total 200]
 
-    zesty::loop -start 0 -end 200 -delay 20 {
+    for {set i 0} {$i < 200} {incr i} {
+        sleep 20
         $bar advance $task1 1
     }
     
@@ -115,7 +116,8 @@ proc test_spinner_columns {} {
         
         set task1 [$bar addTask -name "Loading: <s fg=${mystyle}>$style</s>" -total 100]
 
-        zesty::loop -start 0 -end 100 -delay 30 {
+        for {set i 0} {$i < 100} {incr i} {
+            sleep 30
             $bar advance $task1 1
         }
 
@@ -149,7 +151,8 @@ proc test_indeterminate_modes {} {
         $bar update $task1 -mode determinate
 
         # Switch to determinate and complete
-        zesty::loop -start 0 -end 100 -delay 30 {
+        for {set i 0} {$i < 100} {incr i} {
+            sleep 30
             $bar advance $task1 1
         }
         
@@ -184,7 +187,8 @@ proc test_custom_formatting {} {
     
     set task1 [$bar addTask -name "Custom format test..." -total 50]
     
-    zesty::loop -start 0 -end 50 -delay 100 {
+    for {set i 0} {$i < 50} {incr i} {
+        sleep 100
         $bar advance $task1 1
     }
 
@@ -208,7 +212,8 @@ proc test_styling {} {
     
     set task1 [$bar addTask -name "Styled progress..." -total 75]
     
-    zesty::loop -start 0 -end 75 -delay 100 {
+    for {set i 0} {$i < 75} {incr i} {
+        sleep 100
         $bar advance $task1 1
     }
 
@@ -323,7 +328,8 @@ proc test_performance {} {
     
     set task1 [$bar addTask -name "Performance test..." -total 1000]
     
-    zesty::loop -start 0 -end 1000 -delay 1 {
+    for {set i 0} {$i < 1000} {incr i} {
+        sleep 1
         $bar advance $task1 1
     }
     

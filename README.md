@@ -62,10 +62,14 @@ echo "See <s fg=blue underline=1 link=https://www.tcl-lang.org>the Tcl website</
 set bar [zesty::Bar new]
 set task [$bar addTask -name "Downloading..." -total 100]
 
-# Practical procedure for managing the Tcl event loop :
-zesty::loop -start 0 -end 100 -delay 50 {
+for {set i 0} {$i < 100} {incr i} {
+    # Wait 50 ms while keeping the Tcl event loop running
+    after 50 {set ::tick 1}
+    vwait ::tick
     $bar advance $task 1
 }
+
+$bar destroy
 ```
 ⏳ Status
 ```tcl
