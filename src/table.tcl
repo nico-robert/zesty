@@ -1098,12 +1098,12 @@ oo::class create zesty::Table {
         return $result
     }
 
-    method RenderTopBorder {tableWidth hasTitle boxChars} {
+    method RenderTopBorder {colWidths hasTitle boxChars} {
         # Renders top border of table.
         #
-        # tableWidth - total table width
-        # hasTitle   - whether table has a title
-        # boxChars   - dictionary of box characters
+        # colWidths - list of column widths
+        # hasTitle  - whether table has a title
+        # boxChars  - dictionary of box characters
         #
         # Returns formatted top border string.
 
@@ -1114,7 +1114,6 @@ oo::class create zesty::Table {
         set lines_style [dict get $_options lines style]
         set lines_show [dict get $_options lines show]
         set numCols [dict size $_column_options]
-        set colWidths [my CalculateTableColumnWidths]
 
         set topLine ""
 
@@ -1372,11 +1371,11 @@ oo::class create zesty::Table {
         return $result
     }
 
-    method RenderBottomBorder {tableWidth boxChars} {
+    method RenderBottomBorder {colWidths boxChars} {
         # Renders bottom border of table.
         #
-        # tableWidth - total table width
-        # boxChars   - dictionary of box characters
+        # colWidths - list of column widths
+        # boxChars  - dictionary of box characters
         #
         # Returns formatted bottom border string.
 
@@ -1387,7 +1386,6 @@ oo::class create zesty::Table {
         set lines_style [dict get $_options lines style]
         set lines_show [dict get $_options lines show]
         set numCols [dict size $_column_options]
-        set colWidths [my CalculateTableColumnWidths]
 
         set bottomLine ""
         append bottomLine [dict get $boxChars bl]
@@ -1590,7 +1588,7 @@ oo::class create zesty::Table {
 
         # Top border
         append result [my RenderTopBorder \
-            $tableWidth \
+            $colWidths \
             [expr {$title ne ""}] \
             $boxChars
         ]
@@ -1607,7 +1605,7 @@ oo::class create zesty::Table {
         append result [my RenderFooter $colWidths $boxChars]
 
         # Bottom border
-        append result [my RenderBottomBorder $tableWidth $boxChars]
+        append result [my RenderBottomBorder $colWidths $boxChars]
 
         # Caption
         append result [my RenderCaption $tableWidth]
