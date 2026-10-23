@@ -418,7 +418,13 @@ oo::class create zesty::Table {
         set caption_name [dict get $_options caption name]
 
         if {$caption_name ne ""} {
-            # Estimate number of lines for caption
+            # Estimate number of lines for caption, wrapped to the
+            # rendered table width (see render and RenderCaption).
+            set colWidths [my AdjustColumnsForTitle \
+                [my CalculateTableColumnWidths] \
+                [dict get $_options title name] \
+            ]
+            set tableWidth [my CalculateTotalTableWidth $colWidths]
             set captionWidth [expr {$tableWidth - 2}]
             set wrappedCaption [zesty::wrapText $caption_name $captionWidth 0]
             incr footerRows [llength $wrappedCaption]
