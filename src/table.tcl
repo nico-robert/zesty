@@ -835,7 +835,21 @@ oo::class create zesty::Table {
         # Distribute remaining space to auto columns
         set remainingSpace [expr {$availableWidth - $fixedTotalWidth}]
 
-        if {[llength $autoColumns] > 0 && $remainingSpace > 0} {
+        # Natural widths of auto columns (with padding)
+        set autoRequired 0
+        foreach idx $autoColumns {
+            incr autoRequired [expr {[lindex $naturalWidths $idx] + (2 * $pad)}]
+        }
+
+        if {[llength $autoColumns] > 0 && $autoRequired <= $remainingSpace} {
+            # Everything fits: auto columns keep their natural width
+            # instead of filling the whole terminal.
+            foreach idx $autoColumns {
+                set naturalWidth [lindex $naturalWidths $idx]
+                lset colWidths $idx [my ConstrainColumnWidth $idx \
+                    [expr {$naturalWidth + (2 * $pad)}] $pad]
+            }
+        } elseif {[llength $autoColumns] > 0 && $remainingSpace > 0} {
             # Calculate proportions based on natural widths
             set autoNaturalTotal 0
             foreach idx $autoColumns {
