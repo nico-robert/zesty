@@ -2,7 +2,7 @@
 # Distributed under MIT license. Please see LICENSE for details.
 # zesty : A Tcl library for rich terminal output.
 
-# 15-Jun-2025 : v1.0 Initial release
+# 15-Jun-2025 : v0.1 Initial release
 # 03-Jul-2025 : v0.2
                 # Improved `Windows` Terminal detection
                 # Enhanced args parsing.
