@@ -449,23 +449,18 @@ oo::class create zesty::Bar {
         return $bg
     }
 
-    method RenderSpinner {task_id width} {
+    method RenderSpinner {task_id num width} {
         # Renders animated spinner for a task.
         #
         # task_id - task identifier
+        # num     - spinner column number (each column has its own style)
         # width   - column width for spinner display
         #
         # Returns: Formatted spinner text centered in column width.
 
         set spinnerStyle "dots"
-        # Check if specific style is defined for this column
-        foreach num [dict keys $_column_configs] {
-            if {[dict get $_column_configs $num type] eq "zSpinner"} {
-                if {[dict exists $_column_configs $num spinnerStyle]} {
-                    set spinnerStyle [dict get $_column_configs $num spinnerStyle]
-                }
-                break
-            }
+        if {[dict exists $_column_configs $num spinnerStyle]} {
+            set spinnerStyle [dict get $_column_configs $num spinnerStyle]
         }
 
         # Current position in animation
@@ -1271,7 +1266,7 @@ oo::class create zesty::Bar {
                 }
             }
             "zSpinner" {
-                set spinner_text [my RenderSpinner $task_id $width]
+                set spinner_text [my RenderSpinner $task_id $num $width]
                 return [my FormatText $spinner_text $width $align]
             }
             "zElapsed" {
