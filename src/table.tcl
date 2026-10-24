@@ -98,10 +98,12 @@ oo::class create zesty::Table {
 
     }
 
-    method PagedDisplay {fullContent} {
+    method PagedDisplay {headerLines dataLines footerLines} {
         # Displays table content with automatic page-based scrolling.
         #
-        # fullContent - Complete rendered table content as string
+        # headerLines - fixed header lines (title, top border, column headers)
+        # dataLines   - data lines
+        # footerLines - fixed footer lines (footer, bottom border, caption)
         #
         # Returns nothing.
 
@@ -120,36 +122,14 @@ oo::class create zesty::Table {
             set availableHeight 5
         }
 
-        set contentLines [split $fullContent "\n"]
-        set totalLines [llength $contentLines]
+        set allLines [concat $headerLines $dataLines $footerLines]
 
         # If table fits entirely in available space, display it directly
-        if {$totalLines <= $availableHeight} {
-            zesty::echo $fullContent
+        if {[llength $allLines] <= $availableHeight} {
+            zesty::echo "[join $allLines "\n"]\n"
             return {}
         }
 
-        # Analyze table structure to identify important parts
-        set headerEndLine 0
-        set footerStartLine $totalLines
-
-        # Find line that separates header from content
-        # (first line with "+" or "├" after header lines)
-        set headerEndLine [zesty::findFirstPattern $contentLines $::zesty::tablestyles]
-        if {$headerEndLine == -1} {set headerEndLine 0}
-        # Find line that separates content from footer
-        # (last line with "+" or "├" before footer lines)
-        set footerStartLine [zesty::findLastPattern $contentLines $::zesty::tablestyles]
-        if {$footerStartLine == -1} {set footerStartLine $totalLines}
-
-        # Determine fixed and scrollable parts
-        set headerLines [lrange $contentLines 0 $headerEndLine]
-        set footerLines [lrange $contentLines $footerStartLine end]
-
-        # Calculate available space for data between header and footer
-        set dataStartLine [expr {$headerEndLine + 1}]
-        set dataEndLine [expr {$footerStartLine - 1}]
-        set dataLines [lrange $contentLines $dataStartLine $dataEndLine]
         set totalDataLines [llength $dataLines]
 
         # Calculate how many data lines can be displayed at once
@@ -179,9 +159,7 @@ oo::class create zesty::Table {
 
             # Display data lines for this page
             for {set i $pageStart} {$i <= $pageEnd} {incr i} {
-                if {$i < $totalDataLines} {
-                    zesty::echo [lindex $dataLines $i]
-                }
+                zesty::echo [lindex $dataLines $i]
             }
 
             # Display table footer
@@ -201,8 +179,11 @@ oo::class create zesty::Table {
             }
             zesty::echo "Press Enter to continue, '$keyquit' to quit, '$keypgup' for previous page..."
 
-            # Read user input
-            set input [string tolower [string trim [gets stdin]]]
+            # Read user input (end of input stops paging)
+            if {[gets stdin input] < 0} {
+                break
+            }
+            set input [string tolower [string trim $input]]
 
             if {$input eq [string tolower $keyquit]} {
                 break
@@ -228,39 +209,32 @@ oo::class create zesty::Table {
         return {}
     }
 
-    method ContinuousScroll {fullContent} {
+    method ContinuousScroll {headerLines dataLines footerLines} {
         # Displays table content with line-by-line continuous scrolling.
+        # Only the header stays visible: the footer scrolls with the data.
         #
-        # fullContent - Complete rendered table content as string
+        # headerLines - fixed header lines (title, top border, column headers)
+        # dataLines   - data lines
+        # footerLines - footer lines (footer, bottom border, caption)
         #
         # Returns nothing.
 
         # Reserve one line for information
         set availableHeight [expr {$_termHeight - 2}]
-        set contentLines [split $fullContent "\n"]
-        set totalLines [llength $contentLines]
+        set allLines [concat $headerLines $dataLines $footerLines]
 
         # If table fits entirely in terminal, display it directly
-        if {$totalLines <= $availableHeight} {
-            zesty::echo $fullContent
+        if {[llength $allLines] <= $availableHeight} {
+            zesty::echo "[join $allLines "\n"]\n"
             return {}
         }
 
-        # Analyze structure to identify header part to keep visible
-        set headerEndLine 0
-
-        # Find line that separates header from content
-        # (first line with "+" or "├" after header lines)
-        set headerEndLine [zesty::findFirstPattern $contentLines $::zesty::tablestyles]
-        if {$headerEndLine == -1} {set headerEndLine 0}
-
         # Fixed part (header)
-        set headerLines [lrange $contentLines 0 $headerEndLine]
         set headerHeight [llength $headerLines]
 
-        # Scrollable part (content)
-        set dataLines [lrange $contentLines $headerEndLine+1 end]
-        set totalDataLines [llength $dataLines]
+        # Scrollable part (content and footer)
+        set scrollLines [concat $dataLines $footerLines]
+        set totalDataLines [llength $scrollLines]
 
         # Available space for data
         set visibleDataHeight [expr {$availableHeight - $headerHeight}]
@@ -284,9 +258,7 @@ oo::class create zesty::Table {
             }
 
             for {set i $startLine} {$i <= $endLine} {incr i} {
-                if {$i < $totalDataLines} {
-                    zesty::echo [lindex $dataLines $i]
-                }
+                zesty::echo [lindex $scrollLines $i]
             }
 
             set keyquit [dict get $_options keyQuit]
@@ -297,8 +269,11 @@ oo::class create zesty::Table {
             set cline [expr {$startLine + 1}]-[expr {$endLine + 1}]
             zesty::echo "-- Lines $cline of $totalDataLines | $keypgdn: down, $keypgup: up, $keyquit: quit --"
 
-            # Read user input
-            set input [string tolower [string trim [gets stdin]]]
+            # Read user input (end of input stops scrolling)
+            if {[gets stdin input] < 0} {
+                break
+            }
+            set input [string tolower [string trim $input]]
 
             if {$input eq [string tolower $keyquit]} {
                 break
@@ -344,15 +319,17 @@ oo::class create zesty::Table {
         return {}
     }
 
-    method DisplayWithScroll {fullContent} {
+    method DisplayWithScroll {headerLines dataLines footerLines} {
         # Displays table content with automatic scroll detection.
         #
-        # fullContent - Complete rendered table content as string
+        # headerLines - fixed header lines (title, top border, column headers)
+        # dataLines   - data lines
+        # footerLines - fixed footer lines (footer, bottom border, caption)
         #
         # Returns nothing.
 
-        set contentLines [split $fullContent "\n"]
-        set totalLines   [llength $contentLines]
+        set allLines   [concat $headerLines $dataLines $footerLines]
+        set totalLines [llength $allLines]
 
         # Determine maximum number of lines to display
         set maxLines [dict get $_options maxVisibleLines]
@@ -366,129 +343,61 @@ oo::class create zesty::Table {
 
         # If content fits in available space, display normally
         if {$totalLines <= $maxLines} {
-            zesty::echo $fullContent
+            zesty::echo "[join $allLines "\n"]\n"
             return {}
         }
 
-        # Number of lines to keep for fixed table parts (header, etc.)
-        set headerRows 0
-
-        # Identify header lines to preserve
-        # (Title, top line and column headers)
-        if {[dict get $_options title name] ne ""} {
-            incr headerRows 2  ;# Title + top line
-        } else {
-            incr headerRows 1  ;# Only top line
-        }
-
-        if {[dict get $_options header show]} {
-            # Calculate header height
-            set headerHeight 1  ;# Minimum one line for column headers
-
-            set pad [dict get $_options padding]
-
-            # Find maximum height of column headers
-            foreach col [dict keys $_column_options] {
-                set colWidth 0
-                # Find available width for this column
-                foreach width [my CalculateTableColumnWidths] {
-                    set colWidth [expr {$width - 2 * $pad}]
-                    break
-                }
-
-                set lines [zesty::wrapText $col $colWidth 0]
-                set lineCount [llength $lines]
-                if {$lineCount > $headerHeight} {
-                    set headerHeight $lineCount
-                }
-            }
-
-            incr headerRows $headerHeight
-            # Add separator line under header
-            incr headerRows
-        }
-
-        # Number of lines for table bottom (footer and bottom line)
-        set footerRows 1  ;# At minimum the bottom line
-
-        if {[dict get $_options footer show]} {
-            incr footerRows  ;# Table footer line
-        }
-
-        set caption_name [dict get $_options caption name]
-
-        if {$caption_name ne ""} {
-            # Estimate number of lines for caption, wrapped to the
-            # rendered table width (see render and RenderCaption).
-            set colWidths [my AdjustColumnsForTitle \
-                [my CalculateTableColumnWidths] \
-                [dict get $_options title name] \
-            ]
-            set tableWidth [my CalculateTotalTableWidth $colWidths]
-            set captionWidth [expr {$tableWidth - 2}]
-            set wrappedCaption [zesty::wrapText $caption_name $captionWidth 0]
-            incr footerRows [llength $wrappedCaption]
-        }
+        # Number of lines kept visible above and below the data
+        set headerRows [llength $headerLines]
+        set footerRows [llength $footerLines]
 
         # Calculate number of lines available for scrollable content
         set contentRows [expr {$maxLines - $headerRows - $footerRows}]
         if {$contentRows < 5} {set contentRows 5}
 
         # Total number of "data" lines (without header or footer)
-        set dataLines [expr {$totalLines - $headerRows - $footerRows}]
+        set dataCount [llength $dataLines]
 
         # If not enough data to scroll, display normally
-        if {$dataLines <= $contentRows} {
-            zesty::echo $fullContent
+        if {$dataCount <= $contentRows} {
+            zesty::echo "[join $allLines "\n"]\n"
             return {}
         }
 
-        # Display different parts of the table
+        set keyquit [dict get $_options keyQuit]
+
         # 1. Header (always visible)
-        set headerContent {}
-        for {set i 0} {$i < $headerRows} {incr i} {
-            lappend headerContent [lindex $contentLines $i]
-        }
-        zesty::echo [join $headerContent "\n"]
+        zesty::echo [join $headerLines "\n"]
 
         # 2. Content with scrolling
-        for {set dataStart 0} {$dataStart <= $dataLines - $contentRows} {incr dataStart} {
-            # Absolute position in complete table
-            set start [expr {$headerRows + $dataStart}]
-            set end [expr {$start + $contentRows - 1}]
-
+        for {set dataStart 0} {$dataStart <= $dataCount - $contentRows} {incr dataStart} {
             # Get and display visible segment
-            set visibleContent {}
-            for {set i $start} {$i <= $end} {incr i} {
-                lappend visibleContent [lindex $contentLines $i]
-            }
-            zesty::echo [join $visibleContent "\n"]
+            set dataEnd [expr {$dataStart + $contentRows - 1}]
+            zesty::echo [join [lrange $dataLines $dataStart $dataEnd] "\n"]
 
             # 3. Table footer (always visible)
-            set footerContent {}
-            for {set i [expr {$totalLines - $footerRows}]} {$i < $totalLines} {incr i} {
-                lappend footerContent [lindex $contentLines $i]
-            }
-            zesty::echo [join $footerContent "\n"]
+            zesty::echo [join $footerLines "\n"]
 
             # Add progress indicator
-            zesty::echo "-- Lines [expr {$dataStart + 1}]-[expr {$dataStart + $contentRows}]\
-                        out of $dataLines (Press Enter to continue, q to quit) --"
+            zesty::echo "-- Lines [expr {$dataStart + 1}]-[expr {$dataEnd + 1}]\
+                        out of $dataCount (Press Enter to continue, '$keyquit' to quit) --"
 
-            # Wait for user input
-            set input [string tolower [string trim [gets stdin]]]
-            set keyquit [dict get $_options keyQuit]
+            # Wait for user input (end of input stops scrolling)
+            if {[gets stdin input] < 0} {
+                break
+            }
+            set input [string tolower [string trim $input]]
 
             if {$input eq [string tolower $keyquit]} {
                 break
             }
 
             # Clear screen for next page (except for last)
-            if {$dataStart < $dataLines - $contentRows} {
+            if {$dataStart < $dataCount - $contentRows} {
                 puts "\033\[H\033\[J"  ;# Clear screen and place cursor at top
 
                 # Redisplay fixed header
-                zesty::echo [join $headerContent "\n"]
+                zesty::echo [join $headerLines "\n"]
             }
         }
 
@@ -597,15 +506,23 @@ oo::class create zesty::Table {
         set naturalWidths {}
 
         for {set i 0} {$i < [dict size $_column_options]} {incr i} {
-            set header [dict get $_column_options $i name]
-            set headerLen [zesty::strLength [zesty::extractVisibleText $header]]
+            # A header may span several lines: its width is the longest one.
+            set headerLen 0
+            foreach line [split [dict get $_column_options $i name] "\n"] {
+                set headerLen [expr {max($headerLen, [zesty::strLength [zesty::extractVisibleText $line]])}]
+            }
             set maxContentLen 0
 
             # Check if noWrap is enabled for this column
             set noWrap [dict get $_column_options $i noWrap]
 
-            # Find maximum content width in this column
-            foreach row $_rows {
+            # Find maximum content width in this column (the footer, when
+            # displayed, is taken into account like a row).
+            set rows $_rows
+            if {[dict get $_options footer show] && [llength $_footer]} {
+                lappend rows $_footer
+            }
+            foreach row $rows {
                 if {$i < [llength $row]} {
                     set content [lindex $row $i]
 
@@ -685,6 +602,26 @@ oo::class create zesty::Table {
         return [list $autoColumns $fixedColumns $fixedTotalWidth]
     }
 
+    method ColumnMinWidth {colIndex pad} {
+        # Minimum width an auto column can be compressed to: its minWidth
+        # (5 by default), but never more than its maxWidth.
+        #
+        # colIndex - column index
+        # pad      - padding value
+        #
+        # Returns minimum width with padding.
+
+        set colMinWidth [dict get $_column_options $colIndex minWidth]
+        set colMaxWidth [dict get $_column_options $colIndex maxWidth]
+
+        set width [expr {($colMinWidth > 0) ? $colMinWidth : 5}]
+        if {($colMaxWidth > 0) && ($width > $colMaxWidth)} {
+            set width $colMaxWidth
+        }
+
+        return [expr {$width + (2 * $pad)}]
+    }
+
     method DistributeAllAutoColumns {naturalWidths availableWidth pad} {
         # Distribute width when all columns are auto.
         # Respects minWidth constraints for all columns.
@@ -697,18 +634,22 @@ oo::class create zesty::Table {
 
         set numCols [llength $naturalWidths]
 
-        # Step 1: Calculate widths respecting minWidth
+        # Step 1: Calculate widths respecting minWidth and maxWidth
         set colWidths {}
         set totalRequired 0
 
         for {set i 0} {$i < $numCols} {incr i} {
             set naturalWidth [lindex $naturalWidths $i]
             set colMinWidth [dict get $_column_options $i minWidth]
+            set colMaxWidth [dict get $_column_options $i maxWidth]
 
-            # Width is MAX(natural, minWidth)
+            # Width is MAX(natural, minWidth), capped by maxWidth
             set width $naturalWidth
             if {($colMinWidth > 0) && ($width < $colMinWidth)} {
                 set width $colMinWidth
+            }
+            if {($colMaxWidth > 0) && ($width > $colMaxWidth)} {
+                set width $colMaxWidth
             }
 
             set widthWithPadding [expr {$width + (2 * $pad)}]
@@ -729,8 +670,7 @@ oo::class create zesty::Table {
 
         for {set i 0} {$i < $numCols} {incr i} {
             set currentWidth [lindex $colWidths $i]
-            set colMinWidth [dict get $_column_options $i minWidth]
-            set minRequired [expr {($colMinWidth > 0) ? ($colMinWidth + 2 * $pad) : (5 + 2 * $pad)}]
+            set minRequired [my ColumnMinWidth $i $pad]
 
             if {$currentWidth > $minRequired} {
                 # This column can be compressed
@@ -742,13 +682,15 @@ oo::class create zesty::Table {
 
         # Step 4: If total minimum requirements exceed available space
         if {$fixedSpace > $availableWidth} {
-            # Even with all columns at minimum, we exceed available space
-            # Force proportional distribution
-            set equalWidth [expr {$availableWidth / $numCols}]
+            # Even with all columns at minimum, we exceed available space:
+            # share it in proportion to the minimum widths, so that larger
+            # minWidth columns stay larger.
             set colWidths {}
 
             for {set i 0} {$i < $numCols} {incr i} {
-                lappend colWidths [expr {max($equalWidth, 3 + 2 * $pad)}]
+                set minRequired [my ColumnMinWidth $i $pad]
+                set width [expr {int($availableWidth * $minRequired / double($fixedSpace))}]
+                lappend colWidths [expr {max($width, 3 + 2 * $pad)}]
             }
             return $colWidths
         }
@@ -760,8 +702,7 @@ oo::class create zesty::Table {
             # Distribute compression proportionally among compressible columns
             foreach idx $compressibleColumns {
                 set currentWidth [lindex $colWidths $idx]
-                set colMinWidth [dict get $_column_options $idx minWidth]
-                set minRequired [expr {($colMinWidth > 0) ? ($colMinWidth + 2 * $pad) : (5 + 2 * $pad)}]
+                set minRequired [my ColumnMinWidth $idx $pad]
 
                 # How much this column can be compressed
                 set canCompress [expr {$currentWidth - $minRequired}]
@@ -792,8 +733,7 @@ oo::class create zesty::Table {
                 set newWidth [expr {int($width * $ratio)}]
 
                 # Still respect minimum
-                set colMinWidth [dict get $_column_options $i minWidth]
-                set minRequired [expr {($colMinWidth > 0) ? ($colMinWidth + 2 * $pad) : (5 + 2 * $pad)}]
+                set minRequired [my ColumnMinWidth $i $pad]
 
                 if {$newWidth < $minRequired} {
                     set newWidth $minRequired
@@ -835,62 +775,45 @@ oo::class create zesty::Table {
         # Distribute remaining space to auto columns
         set remainingSpace [expr {$availableWidth - $fixedTotalWidth}]
 
-        # Natural widths of auto columns (with padding)
-        set autoRequired 0
+        # Target (natural) and minimum widths of auto columns, with
+        # padding and constraints (minWidth, maxWidth, noWrap) applied.
+        set targets {}
+        set mins {}
+        set totalTarget 0
+        set totalMin 0
         foreach idx $autoColumns {
-            incr autoRequired [expr {[lindex $naturalWidths $idx] + (2 * $pad)}]
+            set naturalWidth [lindex $naturalWidths $idx]
+            set target [my ConstrainColumnWidth $idx [expr {$naturalWidth + (2 * $pad)}] $pad]
+            set min [expr {min($target, [my ConstrainColumnWidth $idx 0 $pad])}]
+            dict set targets $idx $target
+            dict set mins $idx $min
+            incr totalTarget $target
+            incr totalMin $min
         }
 
-        if {[llength $autoColumns] > 0 && $autoRequired <= $remainingSpace} {
+        if {$totalTarget <= $remainingSpace} {
             # Everything fits: auto columns keep their natural width
             # instead of filling the whole terminal.
-            foreach idx $autoColumns {
-                set naturalWidth [lindex $naturalWidths $idx]
-                lset colWidths $idx [my ConstrainColumnWidth $idx \
-                    [expr {$naturalWidth + (2 * $pad)}] $pad]
+            dict for {idx target} $targets {
+                lset colWidths $idx $target
             }
-        } elseif {[llength $autoColumns] > 0 && $remainingSpace > 0} {
-            # Calculate proportions based on natural widths
-            set autoNaturalTotal 0
-            foreach idx $autoColumns {
-                incr autoNaturalTotal [lindex $naturalWidths $idx]
-            }
-
-            # Distribute proportionally
-            foreach idx $autoColumns {
-                set naturalWidth [lindex $naturalWidths $idx]
-                set proportion [expr {$autoNaturalTotal > 0 ?
-                    double($naturalWidth) / double($autoNaturalTotal) :
-                    1.0 / [llength $autoColumns]}]
-                set allocatedWidth [expr {int($remainingSpace * $proportion)}]
-
-                # Apply constraints and set width
-                lset colWidths $idx [my ConstrainColumnWidth $idx $allocatedWidth $pad]
+        } elseif {$totalMin >= $remainingSpace} {
+            # Not even the minimums fit: use them (the table overflows
+            # as little as possible).
+            dict for {idx min} $mins {
+                lset colWidths $idx $min
             }
         } else {
-            # No space or no auto columns: use minimum
-            foreach idx $autoColumns {
-                lset colWidths $idx [expr {5 + (2 * $pad)}]
+            # Each auto column gets its minimum, then the space left is
+            # shared in proportion to what each column still needs to
+            # reach its natural width. The total never exceeds the
+            # remaining space.
+            set extra [expr {$remainingSpace - $totalMin}]
+            set totalNeed [expr {$totalTarget - $totalMin}]
+            dict for {idx min} $mins {
+                set need [expr {[dict get $targets $idx] - $min}]
+                lset colWidths $idx [expr {$min + int($extra * $need / double($totalNeed))}]
             }
-        }
-
-        return $colWidths
-    }
-
-    method ApplyColumnConstraints {naturalWidths pad} {
-        # Apply min/max constraints to natural widths.
-        #
-        # naturalWidths - list of natural widths
-        # pad           - padding value
-        #
-        # Returns list of constrained widths with padding.
-
-        set colWidths {}
-
-        for {set i 0} {$i < [llength $naturalWidths]} {incr i} {
-            set width [lindex $naturalWidths $i]
-            set finalWidth [my ConstrainColumnWidth $i [expr {$width + 2 * $pad}] $pad]
-            lappend colWidths $finalWidth
         }
 
         return $colWidths
@@ -1196,7 +1119,11 @@ oo::class create zesty::Table {
             if {$availableWidth <= 0} {
                 lappend headerLines [list ""]
             } else {
-                set wrappedHeader [zesty::wrapText $headerText $availableWidth 1]
+                # Each line of a multi-line header is truncated on its own.
+                set wrappedHeader {}
+                foreach line [split $headerText "\n"] {
+                    lappend wrappedHeader {*}[zesty::wrapText $line $availableWidth 1]
+                }
                 lappend headerLines $wrappedHeader
             }
 
@@ -1477,12 +1404,14 @@ oo::class create zesty::Table {
         set maxCaptionWidth [expr {$tableWidth - 2}]
         set wrappedCaption [zesty::wrapText $caption_name $maxCaptionWidth 0]
 
+        # Each line is styled on its own, so that the caption can be
+        # split into lines (scrolling modes) without breaking tags.
         foreach line $wrappedCaption {
             set paddedLine [zesty::alignText $line $tableWidth [dict get $_options caption justify]]
-            append captionLine "$paddedLine\n"
+            append captionLine "[zesty::parseStyleDictToXML $paddedLine $caption_style]\n"
         }
 
-        return [zesty::parseStyleDictToXML $captionLine $caption_style]
+        return $captionLine
     }
 
     method RenderFooter {colWidths boxChars} {
@@ -1530,7 +1459,11 @@ oo::class create zesty::Table {
             if {$availableWidth <= 0 || $cellContent eq ""} {
                 lappend footerCells [list " "]
             } else {
-                set wrappedContent [zesty::wrapText $cellContent $availableWidth 0]
+                # Manual line breaks first, as for data rows.
+                set wrappedContent {}
+                foreach line [split $cellContent "\n"] {
+                    lappend wrappedContent {*}[zesty::wrapText $line $availableWidth 0]
+                }
                 lappend footerCells $wrappedContent
                 set cellHeight [llength $wrappedContent]
                 if {$cellHeight > $footerHeight} {
@@ -1581,11 +1514,13 @@ oo::class create zesty::Table {
         return $result
     }
 
-    method render {} {
-        # Renders the complete table as formatted text.
+    method RenderParts {} {
+        # Renders the table as three lists of lines: the fixed header
+        # (title, top border, column headers), the data rows, and the
+        # fixed footer (footer rows, bottom border, caption). The
+        # scrolling modes keep the header and footer visible.
         #
-        # Returns fully formatted table as string with borders, headers,
-        # content rows, and optional title/caption.
+        # Returns list of: headerLines dataLines footerLines
 
         # Get box characters
         set boxChars [my GetBoxCharacters]
@@ -1600,37 +1535,46 @@ oo::class create zesty::Table {
         # Calculate total table width
         set tableWidth [my CalculateTotalTableWidth $colWidths]
 
-        # Build the table
-        set result ""
-
-        # Title
-        append result [my RenderTitle $title $tableWidth $boxChars]
-
-        # Top border
-        append result [my RenderTopBorder \
+        # Title, top border and header
+        set header [my RenderTitle $title $tableWidth $boxChars]
+        append header [my RenderTopBorder \
             $colWidths \
             [expr {$title ne ""}] \
             $boxChars
         ]
-
-        # Header
-        append result [my RenderHeader $colWidths $boxChars]
-        append result [my RenderHeaderSeparator $colWidths $boxChars]
+        append header [my RenderHeader $colWidths $boxChars]
+        append header [my RenderHeaderSeparator $colWidths $boxChars]
 
         # Data rows
         set processedRows [my ProcessRows $colWidths]
-        append result [my RenderDataRows $processedRows $colWidths $boxChars]
+        set data [my RenderDataRows $processedRows $colWidths $boxChars]
 
-        # Footer
-        append result [my RenderFooter $colWidths $boxChars]
+        # Footer, bottom border and caption
+        set footer [my RenderFooter $colWidths $boxChars]
+        append footer [my RenderBottomBorder $colWidths $boxChars]
+        append footer [my RenderCaption $tableWidth]
 
-        # Bottom border
-        append result [my RenderBottomBorder $colWidths $boxChars]
+        # Each part ends with a newline: remove it before splitting.
+        set parts {}
+        foreach part [list $header $data $footer] {
+            lappend parts [split [string range $part 0 end-1] "\n"]
+        }
 
-        # Caption
-        append result [my RenderCaption $tableWidth]
+        return $parts
+    }
 
-        return $result
+    method render {} {
+        # Renders the complete table as formatted text.
+        #
+        # Returns fully formatted table as string with borders, headers,
+        # content rows, and optional title/caption.
+
+        set lines [concat {*}[my RenderParts]]
+        if {![llength $lines]} {
+            return ""
+        }
+
+        return "[join $lines "\n"]\n"
     }
 
     method display {} {
@@ -1641,20 +1585,20 @@ oo::class create zesty::Table {
         #
         # Returns nothing.
 
-        # Get complete table rendering
-        set fullContent  [my render]
-        set contentLines [split $fullContent "\n"]
-        set totalLines   [llength $contentLines]
+        lassign [my RenderParts] header data footer
+        set lines [concat $header $data $footer]
+        set fullContent "[join $lines "\n"]\n"
 
-        # If content fits in terminal or scrolling is disabled.
-        if {$totalLines <= $_termHeight} {
+        # The table is followed by an empty line and the cursor line,
+        # hence the 2 lines kept free.
+        if {[llength $lines] <= $_termHeight - 2} {
             zesty::echo $fullContent
         } elseif {[dict get $_options autoScroll]} {
-            zesty::echo [my DisplayWithScroll $fullContent]
+            my DisplayWithScroll $header $data $footer
         } elseif {[dict get $_options pageScroll]} {
-            zesty::echo [my PagedDisplay $fullContent]
+            my PagedDisplay $header $data $footer
         } elseif {[dict get $_options continuousScroll]} {
-            zesty::echo [my ContinuousScroll $fullContent]
+            my ContinuousScroll $header $data $footer
         } else {
             zesty::echo $fullContent
         }
