@@ -157,13 +157,40 @@ proc zesty::parseTypeFilters {text filters} {
             }
         }
 
-        set result [regsub -all \
+        # Tags added by a previous filter (or inline tags) are left
+        # untouched: tags cannot be nested.
+        set result [zesty::regsubOutsideTags \
             $pattern \
             $result \
             [zesty::parseStyleDictToXML "\\1" $style] \
         ]
     }
-    
+
+    return $result
+}
+
+proc zesty::regsubOutsideTags {pattern text replacement} {
+    # Applies 'regsub -all' to the parts of text located outside
+    # <s ...>...</s> tags.
+    #
+    # pattern     - regular expression
+    # text        - input text, possibly containing style tags
+    # replacement - replacement string (same syntax as regsub)
+    #
+    # Returns: the text with replacements applied outside tags.
+    set result ""
+    set pos 0
+
+    while {[regexp -indices -start $pos {<s\s+[^>]*>[^<]*</s>} $text tag]} {
+        lassign $tag tag_start tag_end
+        set before [string range $text $pos $tag_start-1]
+        append result [regsub -all $pattern $before $replacement]
+        append result [string range $text $tag_start $tag_end]
+        set pos [expr {$tag_end + 1}]
+    }
+    set after [string range $text $pos end]
+    append result [regsub -all $pattern $after $replacement]
+
     return $result
 }
 
@@ -235,13 +262,49 @@ proc zesty::parseStyleDictToANSI {style_dict} {
     # Processing styles
     foreach style_name [dict keys $termstyles] {
         if {[dict exists $style_dict $style_name]} {
-            if {[dict get $style_dict $style_name]} {
+            if {[zesty::styleEnabled $style_name [dict get $style_dict $style_name]]} {
                 append ansi_codes [zesty::styleANSICode $style_name]
             }
         }
     }
-    
+
     return $ansi_codes
+}
+
+proc zesty::styleEnabled {name value} {
+    # Checks if a terminal style (bold, italic...) is enabled.
+    #
+    # name  - style name
+    # value - style value, must be a boolean
+    #
+    # Returns: 1 if the style is enabled, 0 otherwise, or throws an
+    # error if value is not a boolean.
+    if {![string is boolean -strict $value]} {
+        error "zesty(error): style '$name' must be a boolean value,\
+            got '$value'."
+    }
+
+    return [string is true $value]
+}
+
+proc zesty::formatEqualAttributes {attrs} {
+    # Formats a dictionary as attributes with equal sign
+    # (fg=red bold=1), the reverse of zesty::parseEqualAttributes.
+    # Empty values and values containing spaces are quoted.
+    #
+    # attrs - dictionary of attribute names and values
+    #
+    # Returns: The attribute string.
+    set result {}
+    dict for {key value} $attrs {
+        if {$value eq "" || [regexp {\s} $value]} {
+            set quote [expr {[string first "'" $value] >= 0 ? "\"" : "'"}]
+            set value $quote$value$quote
+        }
+        lappend result "${key}=${value}"
+    }
+
+    return [join $result " "]
 }
 
 proc zesty::parseStyleDictToXML {text style_dict} {
@@ -284,7 +347,7 @@ proc zesty::parseStyleDictToXML {text style_dict} {
     # Processing styles.
     foreach style_name [dict keys $termstyles] {
         if {[dict exists $style_dict $style_name]} {
-            if {[dict get $style_dict $style_name]} {
+            if {[zesty::styleEnabled $style_name [dict get $style_dict $style_name]]} {
                 dict set general_attrs $style_name 1
             }
         }
@@ -303,11 +366,7 @@ proc zesty::parseStyleDictToXML {text style_dict} {
     # Check if there are existing tags in the text
     if {![string match {*<s*</s>*} $text]} {
         # No existing tags, original behavior
-        set xml_codes {}
-        dict for {key value} $general_attrs {
-            lappend xml_codes "${key}=${value}"
-        }
-        return "<s [join $xml_codes " "]>$text</s>"
+        return "<s [zesty::formatEqualAttributes $general_attrs]>$text</s>"
     }
 
     # There are existing (flat) tags, process them directly
@@ -326,11 +385,7 @@ proc zesty::parseStyleDictToXML {text style_dict} {
             if {$current_pos < $match_start} {
                 set before_text [string range $text $current_pos $match_start-1]
                 if {$before_text ne ""} {
-                    set attrs_list {}
-                    dict for {key value} $general_attrs {
-                        lappend attrs_list "${key}=${value}"
-                    }
-                    append result "<s [join $attrs_list " "]>$before_text</s>"
+                    append result "<s [zesty::formatEqualAttributes $general_attrs]>$before_text</s>"
                 }
             }
             
@@ -338,40 +393,21 @@ proc zesty::parseStyleDictToXML {text style_dict} {
             set existing_attrs_string [string range $text $attr_start $attr_end]
             set content [string range $text $content_start $content_end]
             
-            # Parse existing attributes
-            set existing_attrs {}
-            foreach attr [split $existing_attrs_string] {
-                set attr [string trim $attr]
-                if {$attr eq ""} continue
-                
-                if {[regexp {^([^=]+)=(.+)$} $attr -> key value]} {
-                    dict set existing_attrs $key $value
-                }
-            }
-            
+            # Parse existing attributes (quoted values may contain spaces)
+            set existing_attrs [zesty::parseEqualAttributes $existing_attrs_string]
+
             # Merge attributes (general first, then existing for priority)
-            set merged_attrs $general_attrs
-            dict for {key value} $existing_attrs {
-                dict set merged_attrs $key $value
-            }
-            
+            set merged_attrs [dict merge $general_attrs $existing_attrs]
+
             # Build merged tag
-            set merged_attrs_list {}
-            dict for {key value} $merged_attrs {
-                lappend merged_attrs_list "${key}=${value}"
-            }
-            append result "<s [join $merged_attrs_list " "]>$content</s>"
+            append result "<s [zesty::formatEqualAttributes $merged_attrs]>$content</s>"
             
             set current_pos [expr {$match_end + 1}]
         } else {
             # No more tags, add remaining text with general style
             set remaining_text [string range $text $current_pos end]
             if {$remaining_text ne ""} {
-                set attrs_list {}
-                dict for {key value} $general_attrs {
-                    lappend attrs_list "${key}=${value}"
-                }
-                append result "<s [join $attrs_list " "]>$remaining_text</s>"
+                append result "<s [zesty::formatEqualAttributes $general_attrs]>$remaining_text</s>"
             }
             break
         }
