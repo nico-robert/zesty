@@ -63,7 +63,7 @@ proc zesty::initStyles {} {
         set map {" " "" "_" "" "-" ""}
         set search_key [string tolower [string map $map $color_name]]
 
-        if {[dict exists colors_dict $search_key]} {
+        if {[dict exists $colors_dict $search_key]} {
             zesty::throwError "Color '$color_name' ($code) is duplicate\
                                of '[dict get $color_names_dict $search_key]'\
                                ([dict get $colors_dict $search_key])"

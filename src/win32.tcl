@@ -120,7 +120,8 @@ namespace eval zesty {
                 set srWindowBottom $Bottom
                 set srWindowTop    $Top
 
-                return [expr {$srWindowBottom - $srWindowTop}]
+                # Window coordinates are inclusive.
+                return [expr {$srWindowBottom - $srWindowTop + 1}]
 
             }
 
@@ -138,7 +139,8 @@ namespace eval zesty {
                 set srWindowRight $Right
                 set srWindowLeft  $Left
 
-                return [expr {$srWindowRight - $srWindowLeft}]
+                # Window coordinates are inclusive.
+                return [expr {$srWindowRight - $srWindowLeft + 1}]
 
             }
 
@@ -499,7 +501,8 @@ namespace eval zesty {
                 set srWindowBottom [dict get $info srWindow Bottom]
                 set srWindowTop    [dict get $info srWindow Top]
 
-                return [expr {$srWindowBottom - $srWindowTop}]
+                # Window coordinates are inclusive.
+                return [expr {$srWindowBottom - $srWindowTop + 1}]
             }
 
             proc getConsoleWidth {handle} {
@@ -509,7 +512,8 @@ namespace eval zesty {
                 set srWindowRight [dict get $info srWindow Right]
                 set srWindowLeft  [dict get $info srWindow Left]
 
-                return [expr {$srWindowRight - $srWindowLeft}]
+                # Window coordinates are inclusive.
+                return [expr {$srWindowRight - $srWindowLeft + 1}]
             }
 
         } else {

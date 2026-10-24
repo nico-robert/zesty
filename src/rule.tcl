@@ -20,7 +20,7 @@ proc zesty::rule {args} {
         align  -validvalue formatAlign  -type str       -default "center"
     }
     zesty::def options "-style" -validvalue formatStyle -type any|none -default ""
-    zesty::def options "-char"  -validvalue formatLChar -type str      -default "─"
+    zesty::def options "-char"  -validvalue formatLChar -type str|num  -default "─"
     zesty::def options "-width" -validvalue formatPad   -type num|none -default ""
 
     # Merge options and args

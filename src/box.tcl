@@ -201,7 +201,7 @@ proc zesty::box {args} {
             if {$visible_length > $box_content_width} {
                 set wrapped_lines [zesty::wrapText $line $box_content_width 1]
                 set truncated_line [lindex $wrapped_lines 0]
-                set new_visible_length [string length [zesty::extractVisibleText $truncated_line]]
+                set new_visible_length [zesty::strLength [zesty::extractVisibleText $truncated_line]]
                 set updated_line_info [dict create \
                     visible_length $new_visible_length \
                     original_line $truncated_line
@@ -615,7 +615,7 @@ proc zesty::buildHorizontalBorderWithTitle {
         if {$available_width >= 4} {
             set wrapped_lines [zesty::wrapText $title $available_width 1]
             set title [lindex $wrapped_lines 0]
-            set title_length [string length [zesty::extractVisibleText $title]]
+            set title_length [zesty::strLength [zesty::extractVisibleText $title]]
         } else {
             # If space too small, just dots
             set title [string repeat "." [expr {min($available_width, 3)}]]
@@ -834,7 +834,7 @@ proc zesty::TruncateContentToHeight {processed_lines available_height terminal_w
                 $next_line [expr {$content_max_width - 3}] 1
             ]
             set truncated_line_info [dict create \
-                visible_length [string length [zesty::extractVisibleText $truncated_line]] \
+                visible_length [zesty::strLength [zesty::extractVisibleText $truncated_line]] \
                 original_line $truncated_line
             ]
             lappend kept_lines $truncated_line_info

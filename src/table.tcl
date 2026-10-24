@@ -418,7 +418,13 @@ oo::class create zesty::Table {
         set caption_name [dict get $_options caption name]
 
         if {$caption_name ne ""} {
-            # Estimate number of lines for caption
+            # Estimate number of lines for caption, wrapped to the
+            # rendered table width (see render and RenderCaption).
+            set colWidths [my AdjustColumnsForTitle \
+                [my CalculateTableColumnWidths] \
+                [dict get $_options title name] \
+            ]
+            set tableWidth [my CalculateTotalTableWidth $colWidths]
             set captionWidth [expr {$tableWidth - 2}]
             set wrappedCaption [zesty::wrapText $caption_name $captionWidth 0]
             incr footerRows [llength $wrappedCaption]
@@ -626,7 +632,7 @@ oo::class create zesty::Table {
             # For noWrap columns, this is the minimum width we need
             if {$noWrap} {
                 # Store this as a special requirement
-                dict set $_column_options $i _requiredWidth $naturalWidth
+                dict set _column_options $i _requiredWidth $naturalWidth
             }
 
             lappend naturalWidths $naturalWidth
@@ -829,7 +835,21 @@ oo::class create zesty::Table {
         # Distribute remaining space to auto columns
         set remainingSpace [expr {$availableWidth - $fixedTotalWidth}]
 
-        if {[llength $autoColumns] > 0 && $remainingSpace > 0} {
+        # Natural widths of auto columns (with padding)
+        set autoRequired 0
+        foreach idx $autoColumns {
+            incr autoRequired [expr {[lindex $naturalWidths $idx] + (2 * $pad)}]
+        }
+
+        if {[llength $autoColumns] > 0 && $autoRequired <= $remainingSpace} {
+            # Everything fits: auto columns keep their natural width
+            # instead of filling the whole terminal.
+            foreach idx $autoColumns {
+                set naturalWidth [lindex $naturalWidths $idx]
+                lset colWidths $idx [my ConstrainColumnWidth $idx \
+                    [expr {$naturalWidth + (2 * $pad)}] $pad]
+            }
+        } elseif {[llength $autoColumns] > 0 && $remainingSpace > 0} {
             # Calculate proportions based on natural widths
             set autoNaturalTotal 0
             foreach idx $autoColumns {
@@ -893,7 +913,6 @@ oo::class create zesty::Table {
         # For noWrap columns, ensure minimum is the required width
         if {$noWrap && [dict exists $_column_options $colIndex _requiredWidth]} {
             set requiredWidth [dict get $_column_options $colIndex _requiredWidth]
-            set requiredWithPadding [expr {$requiredWidth + (2 * $pad)}]
 
             # The minimum for noWrap is the larger of configured minimum or required width
             set minAllowed [expr {max(($colMinWidth > 0 ? $colMinWidth : 5), $requiredWidth)}]
@@ -1099,12 +1118,12 @@ oo::class create zesty::Table {
         return $result
     }
 
-    method RenderTopBorder {tableWidth hasTitle boxChars} {
+    method RenderTopBorder {colWidths hasTitle boxChars} {
         # Renders top border of table.
         #
-        # tableWidth - total table width
-        # hasTitle   - whether table has a title
-        # boxChars   - dictionary of box characters
+        # colWidths - list of column widths
+        # hasTitle  - whether table has a title
+        # boxChars  - dictionary of box characters
         #
         # Returns formatted top border string.
 
@@ -1115,7 +1134,6 @@ oo::class create zesty::Table {
         set lines_style [dict get $_options lines style]
         set lines_show [dict get $_options lines show]
         set numCols [dict size $_column_options]
-        set colWidths [my CalculateTableColumnWidths]
 
         set topLine ""
 
@@ -1373,11 +1391,11 @@ oo::class create zesty::Table {
         return $result
     }
 
-    method RenderBottomBorder {tableWidth boxChars} {
+    method RenderBottomBorder {colWidths boxChars} {
         # Renders bottom border of table.
         #
-        # tableWidth - total table width
-        # boxChars   - dictionary of box characters
+        # colWidths - list of column widths
+        # boxChars  - dictionary of box characters
         #
         # Returns formatted bottom border string.
 
@@ -1388,7 +1406,6 @@ oo::class create zesty::Table {
         set lines_style [dict get $_options lines style]
         set lines_show [dict get $_options lines show]
         set numCols [dict size $_column_options]
-        set colWidths [my CalculateTableColumnWidths]
 
         set bottomLine ""
         append bottomLine [dict get $boxChars bl]
@@ -1591,7 +1608,7 @@ oo::class create zesty::Table {
 
         # Top border
         append result [my RenderTopBorder \
-            $tableWidth \
+            $colWidths \
             [expr {$title ne ""}] \
             $boxChars
         ]
@@ -1608,7 +1625,7 @@ oo::class create zesty::Table {
         append result [my RenderFooter $colWidths $boxChars]
 
         # Bottom border
-        append result [my RenderBottomBorder $tableWidth $boxChars]
+        append result [my RenderBottomBorder $colWidths $boxChars]
 
         # Caption
         append result [my RenderCaption $tableWidth]

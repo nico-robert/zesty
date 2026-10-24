@@ -85,7 +85,8 @@ proc test_custom_columns {} {
     
     set task1 [$bar addTask -name "Processing data..." -total 200]
 
-    zesty::loop -start 0 -end 200 -delay 20 {
+    for {set i 0} {$i < 200} {incr i} {
+        sleep 20
         $bar advance $task1 1
     }
     
@@ -115,7 +116,8 @@ proc test_spinner_columns {} {
         
         set task1 [$bar addTask -name "Loading: <s fg=${mystyle}>$style</s>" -total 100]
 
-        zesty::loop -start 0 -end 100 -delay 30 {
+        for {set i 0} {$i < 100} {incr i} {
+            sleep 30
             $bar advance $task1 1
         }
 
@@ -149,7 +151,8 @@ proc test_indeterminate_modes {} {
         $bar update $task1 -mode determinate
 
         # Switch to determinate and complete
-        zesty::loop -start 0 -end 100 -delay 30 {
+        for {set i 0} {$i < 100} {incr i} {
+            sleep 30
             $bar advance $task1 1
         }
         
@@ -184,7 +187,8 @@ proc test_custom_formatting {} {
     
     set task1 [$bar addTask -name "Custom format test..." -total 50]
     
-    zesty::loop -start 0 -end 50 -delay 100 {
+    for {set i 0} {$i < 50} {incr i} {
+        sleep 100
         $bar advance $task1 1
     }
 
@@ -208,7 +212,8 @@ proc test_styling {} {
     
     set task1 [$bar addTask -name "Styled progress..." -total 75]
     
-    zesty::loop -start 0 -end 75 -delay 100 {
+    for {set i 0} {$i < 75} {incr i} {
+        sleep 100
         $bar advance $task1 1
     }
 
@@ -314,6 +319,53 @@ proc test_callback_errors {} {
     zesty::echo "Callback errors test completed"
 }
 
+proc count_primes_in_range {start end} {
+    set count 0
+    for {set n $start} {$n <= $end} {incr n} {
+        if {$n < 2} {continue}
+        set isPrime 1
+        for {set d 2} {$d * $d <= $n} {incr d} {
+            if {$n % $d == 0} {set isPrime 0; break}
+        }
+        if {$isPrime} {incr count}
+    }
+    return $count
+}
+
+proc test_blocking_computation {} {
+    zesty::echo "\n=== Test 13: Blocking Computation ==="
+
+    # No 'after', 'vwait' or 'update' here: the loop never returns to the
+    # event loop. The spinner and elapsed time keep moving anyway, because
+    # progress bars are rendered by a dedicated display thread.
+    set bar [zesty::Bar new \
+        -setColumns {zSpinner zName zCount zBar zPercent zElapsed} \
+    ]
+
+    set chunkSize   2000
+    set totalChunks 500
+    set task1 [$bar addTask -name "Counting primes" -total $totalChunks]
+
+    set totalPrimes 0
+    try {
+        for {set i 0} {$i < $totalChunks} {incr i} {
+            set start [expr {$i * $chunkSize + 1}]
+            set end   [expr {$start + $chunkSize - 1}]
+
+            # Blocking computation in the application's interpreter.
+            incr totalPrimes [count_primes_in_range $start $end]
+
+            $bar advance $task1
+        }
+    } finally {
+        $bar destroy
+    }
+
+    zesty::echo "Finished: $totalPrimes primes found below\
+        [expr {$totalChunks * $chunkSize}]."
+    zesty::echo "Blocking computation test completed"
+}
+
 # Performance test
 proc test_performance {} {
     zesty::echo "\n=== Test 10: Performance Test ==="
@@ -323,7 +375,8 @@ proc test_performance {} {
     
     set task1 [$bar addTask -name "Performance test..." -total 1000]
     
-    zesty::loop -start 0 -end 1000 -delay 1 {
+    for {set i 0} {$i < 1000} {incr i} {
+        sleep 1
         $bar advance $task1 1
     }
     
@@ -374,6 +427,7 @@ proc run_all_tests {} {
         test_mixed_modes
         test_custom_command_column
         test_callback_errors
+        test_blocking_computation
     } on error {result options} {
         zesty::throwError [dict get $options -errorinfo]
     } finally {
@@ -398,9 +452,10 @@ proc interactive_menu {} {
     zesty::echo "10. Performance Test" -filters {num {fg green}}
     zesty::echo "11. Error Handling" -filters {num {fg green}}
     zesty::echo "12. Column Callback Errors" -filters {num {fg green}}
+    zesty::echo "13. Blocking Computation" -filters {num {fg green}}
     zesty::echo "0. Exit" -filters {num {fg red}}
 
-    zesty::echo -n "Enter choice (0-12): "
+    zesty::echo -n "Enter choice (0-13): "
     flush stdout
     gets stdin choice
     
@@ -417,6 +472,7 @@ proc interactive_menu {} {
         10 { zesty::resetTerminal ; test_performance }
         11 { zesty::resetTerminal ; test_error_handling }
         12 { zesty::resetTerminal ; test_callback_errors }
+        13 { zesty::resetTerminal ; test_blocking_computation }
         0 { zesty::echo "Exiting..."; return }
         default { zesty::echo "Invalid choice. Please try again." }
     }
