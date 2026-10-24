@@ -778,24 +778,6 @@ proc zesty::isPositiveIntegerValue {key value {limit 0}} {
     }
 }
 
-proc zesty::isListOfList {args} {
-    # Checks if the 'value' is of type list of list.
-    #
-    # args - list
-    #
-    # Returns true if value is a list of list,
-    # false otherwise.
-
-    # Cleans up the list of braces, spaces.
-    regsub -all -line {(^\s+)|(\s+$)|\n|\t} $args {} str
-
-    return [expr {
-            [string range $str 0 1] eq "\{\{" &&
-            [string range $str end-1 end] eq "\}\}"
-        }
-    ]
-}
-
 proc zesty::findWithBounds {lines start_index} {
     # Finds the start and end indices of a block of lines with
     # matching brace characters.
@@ -1022,10 +1004,6 @@ proc zesty::typeOf {value} {
     # pattern ('*' matches every command).
     if {[namespace which -command $value] ne ""} {
         return cmd
-    }
-
-    if {[zesty::isListOfList $value]} {
-        return list
     }
 
     return str
