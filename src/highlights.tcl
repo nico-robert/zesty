@@ -69,12 +69,7 @@ proc zesty::codeHighlights {args} {
     set code [dict get $options code]
     if {$code eq {}} {error "zesty(error): code data is empty."}
 
-    set handle "null"
-    if {[zesty::isWindows]} {
-        set handle [zesty::win32::getStdOutHandle]
-    }
-
-    set term_width [zesty::getTermWidth $handle]
+    lassign [zesty::getTerminalSize] term_width
     set maxlen [dict get $options maxlen]
     if {($maxlen ne "") && ($term_width > $maxlen)} {
         set term_width $maxlen
