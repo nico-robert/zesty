@@ -41,14 +41,24 @@ namespace eval zesty {
                     return 1
                 }
 
-                set parentPid [::twapi::get_process_parent [::twapi::get_current_process_id]]
-                set cmdline [::twapi::get_process_commandline $parentPid]
-
-                if {[string match -nocase "*cmd.exe*" $cmdline]} {
-                    return 0
+                # Same rule as the cffi backend: look for a 'Terminal'
+                # process among the parents (6 levels at most).
+                set pid [::twapi::get_current_process_id]
+                for {set limit 0} {$limit < 6} {incr limit} {
+                    if {[catch {::twapi::get_process_parent $pid} pid] ||
+                        ![string is integer -strict $pid]
+                    } {
+                        break
+                    }
+                    if {[catch {::twapi::get_process_name $pid} name]} {
+                        break
+                    }
+                    if {[string match -nocase "*Terminal*" $name]} {
+                        return 1
+                    }
                 }
 
-                return 1
+                return 0
             }
 
             proc getStdOutHandle {} {
@@ -60,12 +70,22 @@ namespace eval zesty {
 
             proc setConsoleMode {} {
                 # Sets console mode to enable virtual terminal processing.
-                # Enables processed output and virtual
-                # terminal processing for ANSI escape sequence support.
+                # Adds processed output and virtual terminal processing
+                # (ANSI escape sequence support) to the current mode, so
+                # that other flags (wrap at end of line...) are kept.
                 #
                 # Returns: nothing
-                set handle [getStdOutHandle]
-                ::twapi::SetConsoleMode $handle 5
+
+                # No console (GUI application such as wish): nothing to enable.
+                try {
+                    set handle [getStdOutHandle]
+                    set mode   [::twapi::GetConsoleMode $handle]
+                } on error {} {
+                    return {}
+                }
+
+                # ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING
+                ::twapi::SetConsoleMode $handle [expr {$mode | 0x0001 | 0x0004}]
 
                 return {}
             }
@@ -250,7 +270,7 @@ namespace eval zesty {
                 ::cffi::alias define LPCTSTR  winstring
 
                 ::cffi::Struct create PROCESSENTRY32 {
-                    dwSize              struct.COORD
+                    dwSize              DWORD
                     cntUsage            DWORD
                     th32ProcessID       DWORD
                     th32DefaultHeapID   ULONG_PTR
@@ -258,8 +278,8 @@ namespace eval zesty {
                     cntThreads          DWORD
                     th32ParentProcessID DWORD
                     pcPriClassBase      LONG
-                    dwFlags             DWFLAGS
-                    szExeFile           chars[256]
+                    dwFlags             DWORD
+                    szExeFile           chars[260]
                 }
 
                 K32 stdcall CreateToolhelp32Snapshot HANDLE {
@@ -273,14 +293,15 @@ namespace eval zesty {
                     hObject HANDLE
                 }
 
+                # 'inout': dwSize must be set by the caller.
                 K32 stdcall Process32First BOOL {
                     hSnapshot HANDLE
-                    lppe {struct.PROCESSENTRY32 out}
+                    lppe {struct.PROCESSENTRY32 inout}
                 }
 
                 K32 stdcall Process32Next BOOL {
                     hSnapshot HANDLE
-                    lppe {struct.PROCESSENTRY32 out}
+                    lppe {struct.PROCESSENTRY32 inout}
                 }
 
                 K32 stdcall GetStdHandle HANDLE {
@@ -289,7 +310,7 @@ namespace eval zesty {
 
                 K32 stdcall GetConsoleMode BOOL {
                     hConsoleHandle HANDLE
-                    lpMode         {pointer.LPDWORD out}
+                    lpMode         {DWORD out}
                 }
 
                 K32 stdcall FillConsoleOutputCharacterW BOOL {
@@ -384,24 +405,27 @@ namespace eval zesty {
                     error "zesty(error): Process snapshot 'handle' is null."
                 }
 
-                k32::Process32First $handle dictinfo
-                if {[dict get $dictinfo th32ProcessID] != $pid} {
-                    while 1 {
-                        k32::Process32Next $handle dictinfo
+                try {
+                    # Windows requires dwSize to be set before the calls.
+                    set dictinfo [dict create \
+                        dwSize [k32::PROCESSENTRY32 size] cntUsage 0 \
+                        th32ProcessID 0 th32DefaultHeapID 0 th32ModuleID 0 \
+                        cntThreads 0 th32ParentProcessID 0 pcPriClassBase 0 \
+                        dwFlags 0 szExeFile "" \
+                    ]
+                    set found [k32::Process32First $handle dictinfo]
+                    while {$found} {
                         if {[dict get $dictinfo th32ProcessID] == $pid} {
-                            k32::CloseHandle $handle
                             return [list [dict get $dictinfo th32ParentProcessID] \
                                 [dict get $dictinfo szExeFile]]
                         }
-                        if {[incr i] > 1000} {
-                            k32::CloseHandle $handle
-                            return null
-                        }
+                        set found [k32::Process32Next $handle dictinfo]
                     }
-                } else {
-                    return [list [dict get $dictinfo th32ParentProcessID] \
-                        [dict get $dictinfo szExeFile]]
+                } finally {
+                    k32::CloseHandle $handle
                 }
+
+                return null
             }
 
             proc isNewTerminal {} {
@@ -448,12 +472,21 @@ namespace eval zesty {
             proc setConsoleMode {} {
                 # See twapi procedure for details.
                 #
-                set handle [getStdOutHandle]
 
-                k32::SetConsoleMode $handle {
-                    ENABLE_PROCESSED_OUTPUT 
-                    ENABLE_VIRTUAL_TERMINAL_PROCESSING
+                # No console (GUI application such as wish): nothing to enable.
+                try {
+                    set handle [getStdOutHandle]
+                } on error {} {
+                    return {}
                 }
+
+                if {![k32::GetConsoleMode $handle mode]} {
+                    # Not a console (output redirected): nothing to enable.
+                    return {}
+                }
+
+                # ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING
+                k32::SetConsoleMode $handle [expr {$mode | 0x0001 | 0x0004}]
 
                 return {}
             }
