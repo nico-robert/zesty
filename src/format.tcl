@@ -169,5 +169,14 @@ proc zesty::validValue {type key validvalue value} {
             }
         }
 
+        formatJSONObj {
+            # Only the enclosing braces are checked here, huddle
+            # validates the JSON content.
+            set json [string trim $value]
+            if {[string index $json 0] ne "\{" || [string index $json end] ne "\}"} {
+                error "zesty(error): '$key' must be a JSON object {...}"
+            }
+        }
+
     }
 }
