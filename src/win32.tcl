@@ -63,9 +63,13 @@ namespace eval zesty {
 
             proc getStdOutHandle {} {
                 # Gets the standard output handle.
+                # Same as GetStdHandle in the cffi backend: when stdout is
+                # redirected, this is the file or pipe handle, so console
+                # calls fail and zesty knows the output is not a terminal.
+                # (get_console_handle would open the console instead.)
                 #
                 # Returns: the stdout handle.
-                return [::twapi::get_console_handle stdout]
+                return [::twapi::get_standard_handle stdout]
             }
 
             proc setConsoleMode {} {
