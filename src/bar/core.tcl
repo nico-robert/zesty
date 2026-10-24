@@ -892,13 +892,15 @@ oo::class create zesty::Bar {
 
         if {$seconds < 0} {return "--:--:--.---"}
 
-        set seconds_float $seconds
-        set total_seconds [expr {int($seconds_float)}]
+        # Round to the millisecond first, so that 0.9996 gives 1.000
+        # and not 0.1000.
+        set total_ms [expr {wide(round($seconds * 1000))}]
+        set total_seconds [expr {$total_ms / 1000}]
         set hours [expr {$total_seconds / 3600}]
         set remaining_seconds [expr {$total_seconds % 3600}]
         set minutes [expr {$remaining_seconds / 60}]
         set secs [expr {$remaining_seconds % 60}]
-        set milliseconds [expr {int(round(($seconds_float - int($seconds_float)) * 1000))}]
+        set milliseconds [expr {$total_ms % 1000}]
 
         return [format "%d:%02d:%02d.%03d" $hours $minutes $secs $milliseconds]
     }
