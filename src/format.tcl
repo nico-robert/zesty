@@ -159,7 +159,7 @@ proc zesty::validValue {type key validvalue value} {
 
         formatLChar {
             if {[zesty::strLength $value] != 1} {
-                error "zesty(error): This 'key' should be one character."
+                error "zesty(error): '$key' should be one character."
             }
         }
 
