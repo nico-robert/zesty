@@ -22,6 +22,7 @@ proc zesty::status {args} {
             \"zesty::status ?-spinner style? message script\""
     }
     lassign [lrange $args end-1 end] message script
+    set message [zesty::ExpandTabs $message]
 
     zesty::def options "-spinner" -validvalue {} -type str -default "dots"
     set options [zesty::merge $options [lrange $args 0 end-2]]

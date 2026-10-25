@@ -35,7 +35,7 @@ proc zesty::rule {args} {
 
     set char  [dict get $options char]
     set style [dict get $options style]
-    set name  [dict get $options title name]
+    set name  [zesty::ExpandTabs [dict get $options title name]]
 
     # The title needs at least its surrounding spaces, a line character
     # on each side and room for an ellipsis.

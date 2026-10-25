@@ -54,7 +54,7 @@ proc zesty::box {args} {
     # Merge options and args
     set options [zesty::merge $options $args]
 
-    set title [dict get $options title name]
+    set title [zesty::ExpandTabs [dict get $options title name]]
     set title_anchor [dict get $options title anchor]
     set title_visible_length 0
 
@@ -128,6 +128,11 @@ proc zesty::box {args} {
     set content [dict get $options content text]
     set content_style [dict get $options content style]
     set table_enabled [dict get $options content table enabled]
+
+    # In table mode, the tabs of each cell are expanded by the table.
+    if {!$table_enabled} {
+        set content [zesty::ExpandTabs $content]
+    }
 
     if {$table_enabled} {
         # Table mode - process data as table
