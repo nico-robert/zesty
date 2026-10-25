@@ -1451,23 +1451,24 @@ oo::class create zesty::Table {
         return $result
     }
 
-    method RenderParts {} {
+    method RenderParts {{colWidths ""}} {
         # Renders the table as three lists of lines: the fixed header
         # (title, top border, column headers), the data rows, and the
         # fixed footer (footer rows, bottom border, caption). The
         # scrolling modes keep the header and footer visible.
+        #
+        # colWidths - column widths to use (see ColumnWidths), empty
+        #             to compute them from the rows
         #
         # Returns list of: headerLines dataLines footerLines
 
         # Get box characters
         set boxChars [my GetBoxCharacters]
 
-        # Calculate column widths
-        set colWidths [my CalculateTableColumnWidths]
-
-        # Adjust for title if needed
         set title [zesty::ExpandTabs [dict get $_options title name]]
-        set colWidths [my AdjustColumnsForTitle $colWidths $title]
+        if {$colWidths eq ""} {
+            set colWidths [my ColumnWidths]
+        }
 
         # Calculate total table width
         set tableWidth [my CalculateTotalTableWidth $colWidths]
@@ -1498,6 +1499,17 @@ oo::class create zesty::Table {
         }
 
         return $parts
+    }
+
+    method ColumnWidths {} {
+        # Calculates the column widths of the table, adjusted for the
+        # title.
+        #
+        # Returns list of column widths including padding.
+        set colWidths [my CalculateTableColumnWidths]
+        set title [zesty::ExpandTabs [dict get $_options title name]]
+
+        return [my AdjustColumnsForTitle $colWidths $title]
     }
 
     method render {} {
