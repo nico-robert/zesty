@@ -27,6 +27,19 @@
                 # Fixes `zesty::echo -command` with multi-word commands.
                 # Fixes extra trailing space in `zesty::echo`.
                 # New examples: `zprogress_threaded`, `zrule`, `zstatus`, `ztree`.
+# xx-xxx-2026 : v0.4
+                # Adds nested style tags support.
+                # Adds `separator` option to `-header` and `-footer` of class `Table`.
+                # Adds multi-line headers and footers for class `Table`.
+                # Table column widths respect `-minWidth`, `-maxWidth` and `-noWrap`.
+                # Tabs are expanded in tables, boxes, rules and status messages.
+                # Text width of emoji sequences, combining marks and symbols.
+                # Terminal size falls back to `COLUMNS`/`LINES` or 80x24.
+                # `zesty::jsonDecode` accepts JSON objects only.
+                # Fixes `-box style` of class `Table` being ignored.
+                # Fixes `zesty::codeHighlights` truncating code before parsing.
+                # Fixes Windows console size, console mode and redirection detection.
+                # Fixes many `Table`, `Bar`, `box`, `rule` and style parsing bugs.
 
 package require Tcl 8.6-
 
