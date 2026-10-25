@@ -169,6 +169,12 @@ proc zesty::validValue {type key validvalue value} {
             }
         }
 
+        formatSeparator {
+            if {($value ne "auto") && ![string is boolean -strict $value]} {
+                error "zesty(error): '$key' must be 'auto' or a boolean value."
+            }
+        }
+
         formatJSONObj {
             # Only the enclosing braces are checked here, huddle
             # validates the JSON content.

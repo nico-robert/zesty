@@ -66,14 +66,18 @@ oo::class create zesty::Table {
             show  -validvalue formatVBool  -type any       -default "true"
             style -validvalue formatStyle  -type any|none  -default ""
         }
+        # separator: 'auto' (default behavior of each part: the header
+        # separator is drawn only with edges, the footer one always),
+        # or a boolean to force it.
         zesty::def _options "-header"    -validvalue formatVKVP  -type struct -with {
-            show  -validvalue formatVBool  -type any     -default "true"
-            style -validvalue formatStyle  -type any|none  -default ""
+            show      -validvalue formatVBool      -type any       -default "true"
+            style     -validvalue formatStyle      -type any|none  -default ""
+            separator -validvalue formatSeparator  -type any       -default "auto"
         }
         zesty::def _options "-footer"    -validvalue formatVKVP  -type struct -with {
-            show      -validvalue formatVBool  -type any       -default "true"
-            style     -validvalue formatStyle  -type any|none  -default ""
-            separator -validvalue formatVBool  -type any       -default "true"
+            show      -validvalue formatVBool      -type any       -default "true"
+            style     -validvalue formatStyle      -type any|none  -default ""
+            separator -validvalue formatSeparator  -type any       -default "auto"
         }
         zesty::def _options "-keyPgup"          -validvalue {}          -type str|num  -default "p"
         zesty::def _options "-keyPgdn"          -validvalue {}          -type str|num  -default "f"
@@ -311,6 +315,8 @@ oo::class create zesty::Table {
 
         if {[dict get $colopts name] eq ""} {
             dict set colopts name "column:${_col_index}"
+        } else {
+            dict set colopts name [zesty::ExpandTabs [dict get $colopts name]]
         }
 
         # Store column header and its options
@@ -420,7 +426,7 @@ oo::class create zesty::Table {
         }
 
         # Padding with empty strings for missing columns
-        set row $args
+        set row [lmap cell $args {zesty::ExpandTabs $cell}]
         while {[llength $row] < $numCols} {
             lappend row ""
         }
@@ -447,7 +453,7 @@ oo::class create zesty::Table {
         }
 
         # Pad with empty strings for missing columns
-        set footerData $args
+        set footerData [lmap cell $args {zesty::ExpandTabs $cell}]
         while {[llength $footerData] < $numCols} {
             lappend footerData ""
         }
@@ -1011,15 +1017,15 @@ oo::class create zesty::Table {
             return ""
         }
 
-        set lines_style [dict get $_options lines style]
+        set edge_style [my EdgeStyle]
         set result ""
 
         # Top border
         if {[dict get $_options showEdge]} {
             set hl_l [string repeat [dict get $boxChars hl] [expr {$tableWidth - 2}]]
-            append result [zesty::parseStyleDictToXML [dict get $boxChars tl] $lines_style]
-            append result [zesty::parseStyleDictToXML $hl_l $lines_style]
-            append result [zesty::parseStyleDictToXML [dict get $boxChars tr] $lines_style]
+            append result [zesty::parseStyleDictToXML [dict get $boxChars tl] $edge_style]
+            append result [zesty::parseStyleDictToXML $hl_l $edge_style]
+            append result [zesty::parseStyleDictToXML [dict get $boxChars tr] $edge_style]
             append result "\n"
         }
 
@@ -1030,15 +1036,91 @@ oo::class create zesty::Table {
         set paddedTitle [zesty::parseStyleDictToXML $paddedTitle $title_style]
 
         if {[dict get $_options showEdge]} {
-            append result [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
+            append result [zesty::parseStyleDictToXML [dict get $boxChars vl] $edge_style]
             append result $paddedTitle
-            append result [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
+            append result [zesty::parseStyleDictToXML [dict get $boxChars vl] $edge_style]
         } else {
             append result " $paddedTitle"
         }
         append result "\n"
 
         return $result
+    }
+
+    method BorderLine {colWidths left junction right boxChars {inner 0}} {
+        # Builds a horizontal line: left corner, the horizontal
+        # character over each column, a junction between columns when
+        # column lines are shown, and right corner.
+        #
+        # colWidths - list of column widths
+        # left      - box character key of the left end, "" for none
+        # junction  - box character key between columns
+        # right     - box character key of the right end, "" for none
+        # boxChars  - dictionary of box characters
+        # inner     - 1 for a separator inside the table: its ends are
+        #             in the edge style, the rest in the lines style
+        #
+        # Returns styled line followed by a newline.
+
+        set lines_show [dict get $_options lines show]
+        set horizontal [dict get $boxChars hl]
+
+        set line ""
+        set first 1
+        foreach width $colWidths {
+            if {!$first && $lines_show} {
+                append line [dict get $boxChars $junction]
+            }
+            append line [string repeat $horizontal $width]
+            set first 0
+        }
+
+        set left  [expr {$left  eq "" ? "" : [dict get $boxChars $left]}]
+        set right [expr {$right eq "" ? "" : [dict get $boxChars $right]}]
+
+        set edge_style [my EdgeStyle]
+        set line_style [expr {$inner ? [my LineStyle] : $edge_style}]
+
+        # Same style everywhere: a single tag for the whole line.
+        if {$edge_style eq $line_style} {
+            return "[zesty::parseStyleDictToXML $left$line$right $edge_style]\n"
+        }
+
+        set result ""
+        if {$left ne ""} {
+            append result [zesty::parseStyleDictToXML $left $edge_style]
+        }
+        append result [zesty::parseStyleDictToXML $line $line_style]
+        if {$right ne ""} {
+            append result [zesty::parseStyleDictToXML $right $edge_style]
+        }
+
+        return "$result\n"
+    }
+
+    method EdgeStyle {} {
+        # Gets the style of the table frame (borders, edges, title box):
+        # '-box style', or '-lines style' when it is not set.
+        #
+        # Returns style dictionary.
+        set style [dict get $_options box style]
+        if {$style eq ""} {
+            set style [dict get $_options lines style]
+        }
+        return $style
+    }
+
+    method LineStyle {} {
+        # Gets the style of the lines inside the table (between columns,
+        # under the header, above the footer): '-lines style', or
+        # '-box style' when it is not set.
+        #
+        # Returns style dictionary.
+        set style [dict get $_options lines style]
+        if {$style eq ""} {
+            set style [dict get $_options box style]
+        }
+        return $style
     }
 
     method RenderTopBorder {colWidths hasTitle boxChars} {
@@ -1054,38 +1136,114 @@ oo::class create zesty::Table {
             return ""
         }
 
-        set lines_style [dict get $_options lines style]
-        set lines_show [dict get $_options lines show]
-        set numCols [dict size $_column_options]
-
-        set topLine ""
-
-        # Choose appropriate corner characters
+        # Under a title, the corners join the title box.
         if {$hasTitle} {
-            append topLine [dict get $boxChars tlj]
-        } else {
-            append topLine [dict get $boxChars tl]
+            return [my BorderLine $colWidths tlj tt trj $boxChars]
+        }
+        return [my BorderLine $colWidths tl tt tr $boxChars]
+    }
+
+    method RenderSeparator {colWidths boxChars} {
+        # Renders a separator line between table parts (under the
+        # header, above the footer). Without edges, only the inner
+        # part is drawn.
+        #
+        # colWidths - list of column widths
+        # boxChars  - dictionary of box characters
+        #
+        # Returns formatted separator string.
+
+        if {[dict get $_options showEdge]} {
+            return [my BorderLine $colWidths tlj xc trj $boxChars 1]
+        }
+        return [my BorderLine $colWidths "" xc "" $boxChars 1]
+    }
+
+    method RenderBottomBorder {colWidths boxChars} {
+        # Renders bottom border of table.
+        #
+        # colWidths - list of column widths
+        # boxChars  - dictionary of box characters
+        #
+        # Returns formatted bottom border string.
+
+        if {![dict get $_options showEdge]} {
+            return ""
         }
 
-        for {set i 0} {$i < $numCols} {incr i} {
-            append topLine [string repeat [dict get $boxChars hl] [lindex $colWidths $i]]
+        return [my BorderLine $colWidths bl tb br $boxChars]
+    }
 
-            if {$i < [expr {$numCols - 1}] && $lines_show} {
-                if {$hasTitle} {
-                    append topLine [dict get $boxChars tt]
+    method WrapCell {content width noWrap} {
+        # Wraps the content of a cell: manual line breaks first, then
+        # each line is wrapped (or truncated) to the column width.
+        #
+        # content - cell content (may contain style tags)
+        # width   - available width (column width without padding)
+        # noWrap  - 1 to truncate with an ellipsis instead of wrapping
+        #
+        # Returns list of cell lines.
+
+        set lines {}
+        foreach line [split $content "\n"] {
+            lappend lines {*}[zesty::wrapText $line $width $noWrap]
+        }
+
+        return $lines
+    }
+
+    method CellLines {cells height colWidths styles boxChars} {
+        # Renders the screen lines of a table row: on each line, the
+        # cells side by side with their padding, alignment and style,
+        # separated by column lines.
+        #
+        # cells     - list (one element per column) of cell lines
+        # height    - number of screen lines
+        # colWidths - list of column widths
+        # styles    - list (one element per column) of style dicts
+        # boxChars  - dictionary of box characters
+        #
+        # Returns formatted lines string.
+
+        set lines_show  [dict get $_options lines show]
+        set showEdge    [dict get $_options showEdge]
+        set padding     [string repeat " " [dict get $_options padding]]
+        set edge        [zesty::parseStyleDictToXML [dict get $boxChars vl] [my EdgeStyle]]
+        set vertical    [zesty::parseStyleDictToXML [dict get $boxChars vl] [my LineStyle]]
+        set numCols     [llength $colWidths]
+
+        set result ""
+        for {set lineIdx 0} {$lineIdx < $height} {incr lineIdx} {
+            set line [expr {$showEdge ? $edge : ""}]
+
+            for {set colIdx 0} {$colIdx < $numCols} {incr colIdx} {
+                set colWidth [lindex $colWidths $colIdx]
+                # Shorter cells end with empty lines.
+                set colContent [lindex $cells $colIdx $lineIdx]
+
+                if {$colContent eq ""} {
+                    set paddedContent [string repeat " " $colWidth]
                 } else {
-                    append topLine [dict get $boxChars tt]
+                    set justify [dict get $_column_options $colIdx justify]
+                    set paddedContent [zesty::alignText \
+                        "$padding$colContent$padding" $colWidth $justify]
+                }
+
+                append line [zesty::parseStyleDictToXML $paddedContent [lindex $styles $colIdx]]
+
+                if {($colIdx < $numCols - 1) && $lines_show} {
+                    append line $vertical
                 }
             }
+
+            if {$showEdge} {
+                append line $edge
+            }
+
+            append result "$line\n"
         }
 
-        if {$hasTitle} {
-            append topLine [dict get $boxChars trj]
-        } else {
-            append topLine [dict get $boxChars tr]
-        }
-
-        return "[zesty::parseStyleDictToXML $topLine $lines_style]\n"
+        return $result
     }
 
     method RenderHeader {colWidths boxChars} {
@@ -1100,78 +1258,28 @@ oo::class create zesty::Table {
             return ""
         }
 
-        set result ""
-        set lines_style [dict get $_options lines style]
-        set lines_show [dict get $_options lines show]
-        set header_style [dict get $_options header style]
-        set numCols [dict size $_column_options]
         set pad [dict get $_options padding]
+        set numCols [dict size $_column_options]
 
-        # Prepare wrapped headers
-        set headerLines {}
-        set maxHeaderHeight 1
+        # Prepare headers: each line of a multi-line header is
+        # truncated on its own.
+        set cells {}
+        set height 1
 
         for {set i 0} {$i < $numCols} {incr i} {
-            set colWidth [lindex $colWidths $i]
-            set availableWidth [expr {$colWidth - 2 * $pad}]
-            set headerText [dict get $_column_options $i name]
+            set availableWidth [expr {[lindex $colWidths $i] - 2 * $pad}]
 
             if {$availableWidth <= 0} {
-                lappend headerLines [list ""]
+                lappend cells [list ""]
             } else {
-                # Each line of a multi-line header is truncated on its own.
-                set wrappedHeader {}
-                foreach line [split $headerText "\n"] {
-                    lappend wrappedHeader {*}[zesty::wrapText $line $availableWidth 1]
-                }
-                lappend headerLines $wrappedHeader
+                lappend cells [my WrapCell [dict get $_column_options $i name] $availableWidth 1]
             }
-
-            set headerHeight [llength [lindex $headerLines end]]
-            if {$headerHeight > $maxHeaderHeight} {
-                set maxHeaderHeight $headerHeight
-            }
+            set height [expr {max($height, [llength [lindex $cells end]])}]
         }
 
-        # Display multiline header
-        for {set lineIdx 0} {$lineIdx < $maxHeaderHeight} {incr lineIdx} {
-            set headerLine ""
-            if {[dict get $_options showEdge]} {
-                append headerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
-            }
+        set styles [lrepeat $numCols [dict get $_options header style]]
 
-            for {set colIdx 0} {$colIdx < $numCols} {incr colIdx} {
-                set colWidth [lindex $colWidths $colIdx]
-                set colContent ""
-                if {$lineIdx < [llength [lindex $headerLines $colIdx]]} {
-                    set colContent [lindex $headerLines $colIdx $lineIdx]
-                }
-
-                set justify [dict get $_column_options $colIdx justify]
-                set padding [string repeat " " $pad]
-
-                if {$colContent eq ""} {
-                    set paddedContent [string repeat " " $colWidth]
-                } else {
-                    set paddedContent "$padding$colContent$padding"
-                    set paddedContent [zesty::alignText $paddedContent $colWidth $justify]
-                }
-
-                append headerLine [zesty::parseStyleDictToXML $paddedContent $header_style]
-
-                if {$colIdx < [expr {$numCols - 1}] && $lines_show} {
-                    append headerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
-                }
-            }
-
-            if {[dict get $_options showEdge]} {
-                append headerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
-            }
-
-            append result "$headerLine\n"
-        }
-
-        return $result
+        return [my CellLines $cells $height $colWidths $styles $boxChars]
     }
 
     method RenderHeaderSeparator {colWidths boxChars} {
@@ -1182,27 +1290,28 @@ oo::class create zesty::Table {
         #
         # Returns formatted separator string.
 
-        if {![dict get $_options header show] || ![dict get $_options showEdge]} {
+        if {![dict get $_options header show] || ![my ShowSeparator header]} {
             return ""
         }
 
-        set lines_style [dict get $_options lines style]
-        set lines_show [dict get $_options lines show]
-        set numCols [dict size $_column_options]
+        return [my RenderSeparator $colWidths $boxChars]
+    }
 
-        set sepLine ""
-        append sepLine [dict get $boxChars tlj]
+    method ShowSeparator {part} {
+        # Checks if the separator of a table part is drawn. 'auto'
+        # keeps the default behavior: the header separator is drawn
+        # only with edges, the footer separator always.
+        #
+        # part - 'header' or 'footer'
+        #
+        # Returns 1 if the separator is drawn, 0 otherwise.
+        set value [dict get $_options $part separator]
 
-        for {set i 0} {$i < $numCols} {incr i} {
-            append sepLine [string repeat [dict get $boxChars hl] [lindex $colWidths $i]]
-            if {$i < [expr {$numCols - 1}] && $lines_show} {
-                append sepLine [dict get $boxChars xc]
-            }
+        if {$value eq "auto"} {
+            return [expr {($part eq "footer") || [dict get $_options showEdge]}]
         }
 
-        append sepLine [dict get $boxChars trj]
-
-        return "[zesty::parseStyleDictToXML $sepLine $lines_style]\n"
+        return [string is true $value]
     }
 
     method ProcessRows {colWidths} {
@@ -1213,43 +1322,28 @@ oo::class create zesty::Table {
         # Returns list of processed rows with height and aligned cells.
 
         set processedRows {}
+        set numCols [dict size $_column_options]
+        set pad [dict get $_options padding]
 
         foreach row $_rows {
             set processedCells {}
             set rowHeight 1
 
-            for {set i 0} {$i < [dict size $_column_options]} {incr i} {
+            for {set i 0} {$i < $numCols} {incr i} {
                 set content [lindex $row $i]
                 if {$content eq ""} {set content " "}
 
-                set colWidth [expr {[lindex $colWidths $i] - 2 * [dict get $_options padding]}]
-                set wrappedContent {}
+                set colWidth [expr {[lindex $colWidths $i] - 2 * $pad}]
                 set nowrap [dict get $_column_options $i noWrap]
+                set wrappedContent [my WrapCell $content $colWidth $nowrap]
 
-                # Handle manual line breaks first
-                if {[string first "\n" $content] != -1} {
-                    set lines [split $content "\n"]
-                    foreach line $lines {
-                        set wrapped [zesty::wrapText $line $colWidth $nowrap]
-                        foreach wline $wrapped {
-                            lappend wrappedContent $wline
-                        }
-                    }
-                } else {
-                    set wrappedContent [zesty::wrapText $content $colWidth $nowrap]
-                }
-
-                set cellHeight [llength $wrappedContent]
-                if {$cellHeight > $rowHeight} {
-                    set rowHeight $cellHeight
-                }
-
+                set rowHeight [expr {max($rowHeight, [llength $wrappedContent])}]
                 lappend processedCells $wrappedContent
             }
 
             # Vertically align all cells in the row
             set alignedCells {}
-            for {set i 0} {$i < [dict size $_column_options]} {incr i} {
+            for {set i 0} {$i < $numCols} {incr i} {
                 set vertical [dict get $_column_options $i vertical]
                 set cellContent [lindex $processedCells $i]
                 set alignedContent [my AlignCellContentVertical $cellContent $rowHeight $vertical]
@@ -1271,118 +1365,18 @@ oo::class create zesty::Table {
         #
         # Returns formatted data rows string.
 
+        set styles {}
+        for {set i 0} {$i < [dict size $_column_options]} {incr i} {
+            lappend styles [dict get $_column_options $i style]
+        }
+
         set result ""
-        set lines_show [dict get $_options lines show]
-        set lines_style [dict get $_options lines style]
-        set numCols [dict size $_column_options]
-
         foreach processedRow $processedRows {
-            set rowHeight [lindex $processedRow 0]
-            set alignedCells [lindex $processedRow 1]
-
-            for {set lineIdx 0} {$lineIdx < $rowHeight} {incr lineIdx} {
-                set rowLine ""
-                if {[dict get $_options showEdge]} {
-                    append rowLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
-                }
-
-                for {set colIdx 0} {$colIdx < $numCols} {incr colIdx} {
-                    set col_style [dict get $_column_options $colIdx style]
-                    set colWidth [lindex $colWidths $colIdx]
-                    set colContent ""
-
-                    if {$lineIdx < [llength [lindex $alignedCells $colIdx]]} {
-                        set colContent [lindex $alignedCells $colIdx $lineIdx]
-                    }
-
-                    set justify [dict get $_column_options $colIdx justify]
-                    set padding [string repeat " " [dict get $_options padding]]
-                    set paddedContent "$padding$colContent$padding"
-                    set paddedContent [zesty::alignText $paddedContent $colWidth $justify]
-
-                    append rowLine [zesty::parseStyleDictToXML $paddedContent $col_style]
-
-                    if {$colIdx < [expr {$numCols - 1}] && $lines_show} {
-                        append rowLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
-                    }
-                }
-
-                if {[dict get $_options showEdge]} {
-                    append rowLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
-                }
-
-                append result "$rowLine\n"
-            }
+            lassign $processedRow rowHeight alignedCells
+            append result [my CellLines $alignedCells $rowHeight $colWidths $styles $boxChars]
         }
 
         return $result
-    }
-
-    method RenderBottomBorder {colWidths boxChars} {
-        # Renders bottom border of table.
-        #
-        # colWidths - list of column widths
-        # boxChars  - dictionary of box characters
-        #
-        # Returns formatted bottom border string.
-
-        if {![dict get $_options showEdge]} {
-            return ""
-        }
-
-        set lines_style [dict get $_options lines style]
-        set lines_show [dict get $_options lines show]
-        set numCols [dict size $_column_options]
-
-        set bottomLine ""
-        append bottomLine [dict get $boxChars bl]
-
-        for {set i 0} {$i < $numCols} {incr i} {
-            append bottomLine [string repeat [dict get $boxChars hl] [lindex $colWidths $i]]
-
-            if {($i < [expr {$numCols - 1}]) && $lines_show} {
-                append bottomLine [dict get $boxChars tb]
-            }
-        }
-
-        append bottomLine [dict get $boxChars br]
-
-        return "[zesty::parseStyleDictToXML $bottomLine $lines_style]\n"
-    }
-
-    method RenderFooterSeparator {colWidths boxChars} {
-        # Renders separator line before footer.
-        #
-        # colWidths - list of column widths
-        # boxChars  - dictionary of box characters
-        #
-        # Returns formatted separator string.
-
-        if {![dict get $_options footer separator]} {
-            return ""
-        }
-
-        set lines_style [dict get $_options lines style]
-        set lines_show [dict get $_options lines show]
-        set showEdge [dict get $_options showEdge]
-        set numCols [dict size $_column_options]
-
-        set sepLine ""
-        if {$showEdge} {
-            append sepLine [dict get $boxChars tlj]
-        }
-
-        for {set i 0} {$i < $numCols} {incr i} {
-            append sepLine [string repeat [dict get $boxChars hl] [lindex $colWidths $i]]
-            if {($i < [expr {$numCols - 1}]) && $lines_show} {
-                append sepLine [dict get $boxChars xc]
-            }
-        }
-        if {$showEdge} {
-            append sepLine [dict get $boxChars trj]
-        }
-
-        return "[zesty::parseStyleDictToXML $sepLine $lines_style]\n"
     }
 
     method RenderCaption {tableWidth} {
@@ -1392,7 +1386,7 @@ oo::class create zesty::Table {
         #
         # Returns formatted caption string.
 
-        set caption_name [dict get $_options caption name]
+        set caption_name [zesty::ExpandTabs [dict get $_options caption name]]
         if {$caption_name eq ""} {
             return ""
         }
@@ -1422,94 +1416,37 @@ oo::class create zesty::Table {
         #
         # Returns formatted footer string.
 
-        if {![dict get $_options footer show]} {
+        if {![dict get $_options footer show] || ![llength $_footer]} {
             return ""
         }
 
         set result ""
-        set lines_style  [dict get $_options lines style]
-        set lines_show   [dict get $_options lines show]
-        set footer_style [dict get $_options footer style]
-        set numCols      [dict size $_column_options]
-        set pad          [dict get $_options padding]
-
-        # Get footer data from class variable
-        if {[llength $_footer] == 0} {
-            return ""
-        }
+        set pad [dict get $_options padding]
+        set numCols [dict size $_column_options]
 
         # Separate footer from data if enabled
-        if {[dict get $_options footer separator]} {
-            append result [my RenderFooterSeparator $colWidths $boxChars]
+        if {[my ShowSeparator footer]} {
+            append result [my RenderSeparator $colWidths $boxChars]
         }
 
         # Prepare footer cells with wrapping
-        set footerCells {}
-        set footerHeight 1
+        set cells {}
+        set height 1
 
         for {set i 0} {$i < $numCols} {incr i} {
-            set cellContent ""
-            if {$i < [llength $_footer]} {
-                set cellContent [lindex $_footer $i]
-            }
-
-            set colWidth [lindex $colWidths $i]
-            set availableWidth [expr {$colWidth - 2 * $pad}]
+            set cellContent [lindex $_footer $i]
+            set availableWidth [expr {[lindex $colWidths $i] - 2 * $pad}]
 
             if {$availableWidth <= 0 || $cellContent eq ""} {
-                lappend footerCells [list " "]
+                lappend cells [list " "]
             } else {
-                # Manual line breaks first, as for data rows.
-                set wrappedContent {}
-                foreach line [split $cellContent "\n"] {
-                    lappend wrappedContent {*}[zesty::wrapText $line $availableWidth 0]
-                }
-                lappend footerCells $wrappedContent
-                set cellHeight [llength $wrappedContent]
-                if {$cellHeight > $footerHeight} {
-                    set footerHeight $cellHeight
-                }
+                lappend cells [my WrapCell $cellContent $availableWidth 0]
             }
+            set height [expr {max($height, [llength [lindex $cells end]])}]
         }
 
-        # Display multi-line footer
-        for {set lineIdx 0} {$lineIdx < $footerHeight} {incr lineIdx} {
-            set footerLine ""
-            if {[dict get $_options showEdge]} {
-                append footerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
-            }
-
-            for {set colIdx 0} {$colIdx < $numCols} {incr colIdx} {
-                set colWidth [lindex $colWidths $colIdx]
-                set colContent ""
-
-                if {$lineIdx < [llength [lindex $footerCells $colIdx]]} {
-                    set colContent [lindex [lindex $footerCells $colIdx] $lineIdx]
-                }
-
-                set justify [dict get $_column_options $colIdx justify]
-                set padding [string repeat " " $pad]
-
-                if {$colContent eq ""} {
-                    set paddedContent [string repeat " " $colWidth]
-                } else {
-                    set paddedContent "$padding$colContent$padding"
-                    set paddedContent [zesty::alignText $paddedContent $colWidth $justify]
-                }
-
-                append footerLine [zesty::parseStyleDictToXML $paddedContent $footer_style]
-
-                if {$colIdx < [expr {$numCols - 1}] && $lines_show} {
-                    append footerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
-                }
-            }
-
-            if {[dict get $_options showEdge]} {
-                append footerLine [zesty::parseStyleDictToXML [dict get $boxChars vl] $lines_style]
-            }
-
-            append result "$footerLine\n"
-        }
+        set styles [lrepeat $numCols [dict get $_options footer style]]
+        append result [my CellLines $cells $height $colWidths $styles $boxChars]
 
         return $result
     }
@@ -1529,7 +1466,7 @@ oo::class create zesty::Table {
         set colWidths [my CalculateTableColumnWidths]
 
         # Adjust for title if needed
-        set title [dict get $_options title name]
+        set title [zesty::ExpandTabs [dict get $_options title name]]
         set colWidths [my AdjustColumnsForTitle $colWidths $title]
 
         # Calculate total table width
