@@ -1,7 +1,7 @@
 # Copyright (c) 2025-2026 Nicolas ROBERT.
 # Distributed under MIT license. Please see LICENSE for details.
 
-package ifneeded zesty 0.4a0 [list apply {dir {
+package ifneeded zesty 0.4 [list apply {dir {
     source -encoding utf-8 [file join $dir zesty.tcl]
     
     if {$::tcl_platform(platform) eq "windows"} {
