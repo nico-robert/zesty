@@ -27,7 +27,7 @@
                 # Fixes `zesty::echo -command` with multi-word commands.
                 # Fixes extra trailing space in `zesty::echo`.
                 # New examples: `zprogress_threaded`, `zrule`, `zstatus`, `ztree`.
-# xx-xxx-2026 : v0.4
+# 26-Oct-2026 : v0.4
                 # Adds nested style tags support.
                 # Adds `separator` option to `-header` and `-footer` of class `Table`.
                 # Adds multi-line headers and footers for class `Table`.
@@ -40,6 +40,7 @@
                 # Fixes `zesty::codeHighlights` truncating code before parsing.
                 # Fixes Windows console size, console mode and redirection detection.
                 # Fixes many `Table`, `Bar`, `box`, `rule` and style parsing bugs.
+                # `zesty::loop` removed from examples (`zprogress_threaded` merged into `zprogress`).
 
 package require Tcl 8.6-
 
