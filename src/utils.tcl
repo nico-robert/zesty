@@ -22,7 +22,7 @@ proc zesty::getTermHeight {handle} {
     # handle - console handle (Windows) or "null" for Unix
     #
     # Returns terminal height in rows.
-    if {[catch {
+    try {
         if {[zesty::isWindows] && ($handle ne "null")} {
             set height [zesty::win32::getConsoleHeight $handle]
         } else {
@@ -32,12 +32,16 @@ proc zesty::getTermHeight {handle} {
                 set height [lindex $sttyOut 0]
             } elseif {![catch {exec tput lines $null} height]} {
             } else {
-                error "zesty(error): Impossible to find the terminal\ 
+                error "zesty(error): Impossible to find the terminal\
                     height for systems Unix/Linux"
             }
         }
-    } msg]} {
-        error "zesty(error): $msg"
+    } on error {msg} {
+        # zesty messages already have the prefix, twapi ones do not.
+        if {![string match "zesty(error):*" $msg]} {
+            set msg "zesty(error): $msg"
+        }
+        error $msg
     }
 
     return $height
@@ -49,7 +53,7 @@ proc zesty::getTermWidth {handle} {
     # handle - console handle (Windows) or "null" for Unix
     #
     # Returns terminal width in columns.
-    if {[catch {
+    try {
         if {[zesty::isWindows] && ($handle ne "null")} {
             set width [zesty::win32::getConsoleWidth $handle]
         } else {
@@ -59,31 +63,69 @@ proc zesty::getTermWidth {handle} {
                 set width [lindex $sttyOut 1]
             } elseif {![catch {exec tput cols $null} width]} {
             } else {
-                error "zesty(error): Impossible to find the terminal\ 
+                error "zesty(error): Impossible to find the terminal\
                     width for systems Unix/Linux"
             }
         }
-    } msg]} {
-        error "zesty(error): $msg"
+    } on error {msg} {
+        # zesty messages already have the prefix, twapi ones do not.
+        if {![string match "zesty(error):*" $msg]} {
+            set msg "zesty(error): $msg"
+        }
+        error $msg
     }
-            
+
     return $width
 }
 
+proc zesty::MeasureTerminal {{handle "null"}} {
+    # Measures terminal dimensions, without fallback.
+    #
+    # handle - console handle (optional, defaults to "null")
+    #
+    # Returns list containing terminal width and height in
+    # characters, or throws an error if there is no terminal
+    # (output redirected, no tty).
+    if {[zesty::isWindows] && ($handle eq "null")} {
+        set handle [zesty::win32::getStdOutHandle]
+    }
+    set size [list \
+        [zesty::getTermWidth $handle] \
+        [zesty::getTermHeight $handle] \
+    ]
+    lassign $size width height
+    if {![string is integer -strict $width] || ($width <= 0) ||
+        ![string is integer -strict $height] || ($height <= 0)} {
+        error "zesty(error): Invalid terminal size '$size'"
+    }
+
+    return $size
+}
+
 proc zesty::getTerminalSize {{handle "null"}} {
-    # Gets terminal dimensions as width and height.
+    # Gets terminal dimensions as width and height. When there is no
+    # terminal to measure (output redirected, no tty), falls back to
+    # the COLUMNS and LINES environment variables, then to 80x24.
     #
     # handle - console handle (optional, defaults to "null")
     #
     # Returns list containing terminal width and height in
     # characters.
-    if {[zesty::isWindows] && ($handle eq "null")} {
-        set handle [zesty::win32::getStdOutHandle]   
+    if {![catch {zesty::MeasureTerminal $handle} size]} {
+        return $size
     }
-    return [list \
-        [zesty::getTermWidth $handle] \
-        [zesty::getTermHeight $handle] \
-    ]
+
+    set size {80 24}
+    foreach {index name} {0 COLUMNS 1 LINES} {
+        if {[info exists ::env($name)] &&
+            [string is integer -strict $::env($name)] &&
+            ($::env($name) > 0)
+        } {
+            lset size $index $::env($name)
+        }
+    }
+
+    return $size
 }
 
 proc zesty::getCursorPosition {handle} {
@@ -277,8 +319,10 @@ proc zesty::colorInfo {color_name} {
     } else {
         puts "Color '$color_name' not found"
         
-        # If it's potentially a hex value, give suggestions
-        if {[zesty::isValidHex]} {
+        # If it's potentially a hex value, give suggestions. A valid
+        # hex value always resolves to the closest color, so only
+        # malformed ones get here.
+        if {[zesty::looksLikeHex $color_name]} {
             puts "Suggestion: Check that the hexadecimal value is correct"
             puts "Expected format: #ff0000 or ff0000"
         }
@@ -625,6 +669,27 @@ proc zesty::isValidHex {hex} {
     return [regexp {^[0-9a-fA-F]{6}$} $hex_clean]
 }
 
+proc zesty::looksLikeHex {value} {
+    # Checks if a string looks like an attempt at a hexadecimal
+    # color, valid or not. Unlike zesty::isValidHex, the length
+    # and the characters after '#' are not checked.
+    #
+    # value - string to check
+    #
+    # Returns true if string starts with '#', or contains only
+    # hexadecimal characters without being an integer, false
+    # otherwise.
+
+    if {[string index $value 0] eq "#"} {
+        return 1
+    }
+
+    return [expr {
+        [regexp {^[0-9a-fA-F]+$} $value] &&
+        ![string is integer -strict $value]
+    }]
+}
+
 proc zesty::resetTerminal {} {
     # Sends ANSI escape sequences to clear
     # screen and position cursor at top-left corner.
@@ -711,24 +776,6 @@ proc zesty::isPositiveIntegerValue {key value {limit 0}} {
             error "zesty(error): '$key' must be a positive integer."
         }
     }
-}
-
-proc zesty::isListOfList {args} {
-    # Checks if the 'value' is of type list of list.
-    #
-    # args - list
-    #
-    # Returns true if value is a list of list,
-    # false otherwise.
-
-    # Cleans up the list of braces, spaces.
-    regsub -all -line {(^\s+)|(\s+$)|\n|\t} $args {} str
-
-    return [expr {
-            [string range $str 0 1] eq "\{\{" &&
-            [string range $str end-1 end] eq "\}\}"
-        }
-    ]
 }
 
 proc zesty::findWithBounds {lines start_index} {
@@ -957,10 +1004,6 @@ proc zesty::typeOf {value} {
     # pattern ('*' matches every command).
     if {[namespace which -command $value] ne ""} {
         return cmd
-    }
-
-    if {[zesty::isListOfList $value]} {
-        return list
     }
 
     return str

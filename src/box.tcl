@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Nicolas ROBERT.
+# Copyright (c) 2025-2026 Nicolas ROBERT.
 # Distributed under MIT license. Please see LICENSE for details.
 
 namespace eval zesty {}
@@ -54,7 +54,7 @@ proc zesty::box {args} {
     # Merge options and args
     set options [zesty::merge $options $args]
 
-    set title [dict get $options title name]
+    set title [zesty::ExpandTabs [dict get $options title name]]
     set title_anchor [dict get $options title anchor]
     set title_visible_length 0
 
@@ -129,6 +129,11 @@ proc zesty::box {args} {
     set content_style [dict get $options content style]
     set table_enabled [dict get $options content table enabled]
 
+    # In table mode, the tabs of each cell are expanded by the table.
+    if {!$table_enabled} {
+        set content [zesty::ExpandTabs $content]
+    }
+
     if {$table_enabled} {
         # Table mode - process data as table
         set table_columns [dict get $options content table columns]
@@ -201,7 +206,7 @@ proc zesty::box {args} {
             if {$visible_length > $box_content_width} {
                 set wrapped_lines [zesty::wrapText $line $box_content_width 1]
                 set truncated_line [lindex $wrapped_lines 0]
-                set new_visible_length [string length [zesty::extractVisibleText $truncated_line]]
+                set new_visible_length [zesty::strLength [zesty::extractVisibleText $truncated_line]]
                 set updated_line_info [dict create \
                     visible_length $new_visible_length \
                     original_line $truncated_line
@@ -615,7 +620,7 @@ proc zesty::buildHorizontalBorderWithTitle {
         if {$available_width >= 4} {
             set wrapped_lines [zesty::wrapText $title $available_width 1]
             set title [lindex $wrapped_lines 0]
-            set title_length [string length [zesty::extractVisibleText $title]]
+            set title_length [zesty::strLength [zesty::extractVisibleText $title]]
         } else {
             # If space too small, just dots
             set title [string repeat "." [expr {min($available_width, 3)}]]
@@ -834,7 +839,7 @@ proc zesty::TruncateContentToHeight {processed_lines available_height terminal_w
                 $next_line [expr {$content_max_width - 3}] 1
             ]
             set truncated_line_info [dict create \
-                visible_length [string length [zesty::extractVisibleText $truncated_line]] \
+                visible_length [zesty::strLength [zesty::extractVisibleText $truncated_line]] \
                 original_line $truncated_line
             ]
             lappend kept_lines $truncated_line_info

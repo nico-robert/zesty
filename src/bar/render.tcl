@@ -53,7 +53,9 @@ proc zesty::render::measure {} {
 
     set sizeDue [expr {[clock milliseconds] + 500}]
     set measured [apply {{} {
-        if {[catch {zesty::getTerminalSize} result]} { 
+        # No fallback size here: a failure means the output is not
+        # interactive (redirected to a file or a pipe).
+        if {[catch {zesty::MeasureTerminal} result]} {
             return {} 
         } 
         return $result

@@ -62,10 +62,14 @@ echo "See <s fg=blue underline=1 link=https://www.tcl-lang.org>the Tcl website</
 set bar [zesty::Bar new]
 set task [$bar addTask -name "Downloading..." -total 100]
 
-# Practical procedure for managing the Tcl event loop :
-zesty::loop -start 0 -end 100 -delay 50 {
+for {set i 0} {$i < 100} {incr i} {
+    # Wait 50 ms while keeping the Tcl event loop running
+    after 50 {set ::tick 1}
+    vwait ::tick
     $bar advance $task 1
 }
+
+$bar destroy
 ```
 ⏳ Status
 ```tcl
@@ -260,6 +264,34 @@ args                  |Description
 |_-continuousScroll_  | Enable continuous scrolling
 |_-footer_            | Show table footer.   
 
+`-box style` is the style of the frame (outer borders, title box), `-lines style` the style of the lines
+inside the table (between columns, under the header, above the footer). When only one of them is set,
+it is used for both.
+
+`-header` and `-footer` accept `show`, `style` and `separator`. `separator` is `auto` (default: the line
+under the header is drawn only with `-showEdge true`, the line above the footer always) or a boolean
+to force it. For example, a table without edges and column lines, with a single line under the header:
+```tcl
+zesty::Table new -showEdge false -lines {show false} -header {separator true}
+```
+
+Columns are added with `addColumn`, rows with `addRow` and the footer with `setFooter`:
+```tcl
+$table addColumn ?options?
+$table addRow value ?value ...?
+$table setFooter value ?value ...?
+```
+args                  |Description
+| ------              | ------                    
+|_-name_              | Column header (may contain style tags and several lines)
+|_-style_             | Style of the column cells
+|_-justify_           | left (default), right or center
+|_-vertical_          | Vertical alignment: top, middle (default) or bottom
+|_-width_             | Fixed width (default `-1`: computed from the content and the terminal width)
+|_-minWidth_          | Minimum width of an auto column
+|_-maxWidth_          | Maximum width of an auto column
+|_-noWrap_            | Truncate the cells instead of wrapping them
+
 
 ### Boxes command :
 Create styled text boxes:
@@ -357,7 +389,17 @@ Tags can be nested and combined.
 -->
 <s fg=red>text</s>
 <s fg=blue bold=1>text</s>
+<s fg=red>red <s bold=1>bold red</s> red</s>
 ```
+A nested tag keeps the style of the enclosing tag and adds its own (its values win).
+A tag without its closing `</s>` (or the reverse) is displayed as text. Use `-raw` or `-escape_map`
+of `zesty::echo` to display tags as text.
+
+Text widths take wide characters into account (CJK, emoji, emoji sequences such as 👨‍👩‍👧),
+and tabs are expanded to the next multiple of 4 columns in tables, boxes, rules and status messages.
+
+When the terminal size cannot be read (output redirected), **zesty** uses the `COLUMNS` and `LINES`
+environment variables, or 80x24.
 
 _Refer to `colors.tcl` file for the complete 256-color palette specification and terminal capability detection._
 ## Examples :
@@ -396,3 +438,18 @@ Inspired by modern CLI tools and libraries
     - Fixes `zesty::echo -command` with multi-word commands.
     - Fixes extra trailing space in `zesty::echo`.
     - New examples: `zprogress_threaded`, `zrule`, `zstatus`, `ztree`.
+*  **26-Oct-2026** : 0.4
+    - Adds nested style tags support.
+    - Adds `separator` option to `-header` and `-footer` of class `Table`.
+    - Adds multi-line headers and footers for class `Table`.
+    - Table column widths respect `-minWidth`, `-maxWidth` and `-noWrap` in all cases.
+    - Tabs are expanded in tables, boxes, rules and status messages.
+    - Text width of emoji sequences, combining marks and symbols, text cut on whole characters.
+    - Terminal size falls back to `COLUMNS`/`LINES` or 80x24 when it cannot be read.
+    - `zesty::jsonDecode` accepts JSON objects only (a top-level array is now an error),
+      shows `{}` and `[]` for empty values.
+    - Fixes `-box style` of class `Table` being ignored (it styles the frame, `-lines style` the inner lines).
+    - Fixes `zesty::codeHighlights` truncating code before parsing.
+    - Fixes Windows console size, console mode flags and redirected output detection.
+    - Fixes many `Table`, `Bar`, `box`, `rule` and style parsing bugs.
+    - `zesty::loop` removed from examples (`zprogress_threaded` merged into `zprogress`).

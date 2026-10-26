@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Nicolas ROBERT.
+# Copyright (c) 2025-2026 Nicolas ROBERT.
 # Distributed under MIT license. Please see LICENSE for details.
 
 namespace eval zesty {}
@@ -159,13 +159,28 @@ proc zesty::validValue {type key validvalue value} {
 
         formatLChar {
             if {[zesty::strLength $value] != 1} {
-                error "zesty(error): This 'key' should be one character."
+                error "zesty(error): '$key' should be one character."
             }
         }
 
         formatVBool {
             if {![string is boolean -strict $value]} {
                 error "zesty(error): '$key' must be a boolean value."
+            }
+        }
+
+        formatSeparator {
+            if {($value ne "auto") && ![string is boolean -strict $value]} {
+                error "zesty(error): '$key' must be 'auto' or a boolean value."
+            }
+        }
+
+        formatJSONObj {
+            # Only the enclosing braces are checked here, huddle
+            # validates the JSON content.
+            set json [string trim $value]
+            if {[string index $json 0] ne "\{" || [string index $json end] ne "\}"} {
+                error "zesty(error): '$key' must be a JSON object {...}"
             }
         }
 

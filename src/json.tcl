@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Nicolas ROBERT.
+# Copyright (c) 2025-2026 Nicolas ROBERT.
 # Distributed under MIT license. Please see LICENSE for details.
 
 namespace eval zesty {}
@@ -8,7 +8,7 @@ proc zesty::jsonDecode {args} {
     # and styling options.
     #
     # args - variable arguments supporting:
-    #  -json            - JSON data to decode
+    #  -json            - JSON object to decode ({...})
     #  -dumpJSONOptions - formatting huddle options
     #  -style           - styling specifications
     #  -showLinesNumber - whether to show line numbers
@@ -18,7 +18,7 @@ proc zesty::jsonDecode {args} {
     package require huddle::json
 
     # Default options
-    zesty::def options "-json"            -validvalue {} -type list|none -default {}
+    zesty::def options "-json"            -validvalue formatJSONObj -type any|none -default {}
     zesty::def options "-dumpJSONOptions" -validvalue formatVKVP -type struct -with {
         offset    -validvalue {}  -type str|none  -default "  "
         newline   -validvalue {}  -type str|none  -default "\n"
@@ -41,7 +41,7 @@ proc zesty::jsonDecode {args} {
         zesty::throwError "No json provided"
     }
 
-    set json [dict get $options json]
+    set json [string trim [dict get $options json]]
     set json2h [huddle::json2huddle $json]
 
     set offset    [dict get $options dumpJSONOptions offset]
@@ -52,13 +52,15 @@ proc zesty::jsonDecode {args} {
     set result [zesty::jsondump $json2h $jsonStyle $offset $newline $begin]
 
     if {[dict get $options showLinesNumber]} {
-        set totalLines [llength [split $json "\n"]]
+        # Line numbers are as wide as the number of OUTPUT lines.
+        set lines [split $result $newline]
+        set totalLines [llength $lines]
         set formattedLines {}
         set len [string length $totalLines]
         set color [dict get $jsonStyle lineNum]
         set separator ""
 
-        foreach line [split $result $newline] {
+        foreach line $lines {
             incr lineNum
             set lineNumStr [zesty::parseStyleDictToXML \
                 [format "%*d " $len $lineNum] $color \
@@ -121,7 +123,6 @@ proc zesty::jsondump {huddle_object style {offset "  "} {newline "\n"} {begin ""
                     \f \\f
                     \\ \\\\
                     \" \\\"
-                    / \\/
                 } $data
             ]
             set strstyle [dict get $style str]
@@ -133,6 +134,9 @@ proc zesty::jsondump {huddle_object style {offset "  "} {newline "\n"} {begin ""
             for {set i 0} {$i < $len} {incr i} {
                 set subobject [huddle get $huddle_object $i]
                 lappend inner [zesty::jsondump $subobject $style $offset $newline $nextoff]
+            }
+            if {[llength $inner] == 0} {
+                return "\[\]"
             }
             if {[llength $inner] == 1} {
                 return "\[[lindex $inner 0]\]"
@@ -147,8 +151,12 @@ proc zesty::jsondump {huddle_object style {offset "  "} {newline "\n"} {begin ""
                 lappend inner [subst {$skey:$sp[zesty::jsondump \
                     [huddle get $huddle_object $key] $style $offset $newline $nextoff]}]
             }
+            if {[llength $inner] == 0} {
+                return "\{\}"
+            }
             if {[llength $inner] == 1} {
-                return $inner
+                # Same compact form as a single element list.
+                return "\{[lindex $inner 0]\}"
             }
             return "\{$nlof[join $inner ,$nlof]$newline$begin\}"
         }

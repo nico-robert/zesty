@@ -29,44 +29,29 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
         }
         set result [uplevel #0 [list {*}$command $text]]
     }
-    
+
     # Process tags sequentially
     set processed_text ""
-    set current_pos 0
-    
+
     # Generate ANSI codes for base style
     set base_ansi ""
     if {[llength $base_style] > 0} {
         set base_ansi [zesty::parseStyleDictToANSI $base_style]
     }
-    
+
     # If there's a base style, start by applying it
     if {$base_ansi ne ""} {
         set processed_text $base_ansi
     }
-    
-    # Regular expression to match <s> tags
-    set re {<s\s+([^>]+)>([^<]*)</s>}
-    
-    # Search for <s> tags
-    while {[regexp -indices -start $current_pos $re $result match attr_indices content_indices]} {
-        lassign $match match_start match_end
-        lassign $attr_indices attr_start attr_end
-        lassign $content_indices content_start content_end
-        
-        # Extract parts
-        set before     [string range $result $current_pos $match_start-1]
-        set attributes [string range $result $attr_start $attr_end]
-        set content    [string range $result $content_start $content_end]
-        
-        # Add text before tag (with base style if defined)
-        append processed_text $before
-        
-        # Process tag attributes
-        if {![string match "*=*" $attributes]} {
-            error "zesty(error): Unsupported style format: $attributes"
+
+    foreach segment [zesty::StyleSegments $result] {
+        lassign $segment styled content attrs
+
+        # Text outside tags (with base style if defined)
+        if {!$styled} {
+            append processed_text $content
+            continue
         }
-        set attrs [zesty::parseEqualAttributes $attributes]
 
         # 'link' is not a style: 'link=1' targets the content itself,
         # any other value is the target URL, a false value disables it.
@@ -91,26 +76,139 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
         } else {
             append processed_text $content
         }
-        
+
         # Return to base style after local content (or reset if no base)
         if {$base_ansi ne ""} {
             append processed_text $base_ansi  ; # Return to base style
         } elseif {!$no_reset} {
             append processed_text [zesty::resetANSIStyle]   ; # Complete reset
         }
-        
-        set current_pos [expr {$match_end + 1}]
     }
-    
-    # Add remaining text
-    append processed_text [string range $result $current_pos end]
-    
+
     # Final reset if necessary
     if {!$no_reset} {
         append processed_text [zesty::resetANSIStyle]
     }
 
     return $processed_text
+}
+
+proc zesty::StyleSegments {text {withAttrs 1}} {
+    # Splits a text into plain and styled segments. This is the only
+    # place where style tags are parsed.
+    # Nested tags are flattened: a segment gets the attributes of all
+    # the tags around it, the innermost ones taking precedence. A tag
+    # without its closing tag (or the reverse) is kept as plain text.
+    #
+    # text      - text containing style tags
+    # withAttrs - 0 to skip attribute parsing (faster, when only the
+    #             visible text is needed)
+    #
+    # Returns: A list of {styled content attrs} elements: styled is 1
+    # for the content of a tag and 0 for plain text, attrs is the
+    # dictionary of the tag attributes. 'link=1' is replaced by the
+    # visible text of its tag, so that a link split by nested tags
+    # still targets the whole text.
+
+    # Fast path: no closing tag, no style.
+    if {[string first "</s>" $text] < 0} {
+        return [list [list 0 $text {}]]
+    }
+
+    # 1. Pair opening and closing tags.
+    set opened {}
+    set tags {}
+    # No capture group: much faster with the Tcl regexp engine.
+    foreach match [regexp -all -inline -indices {<s\s+[^>]+>|</s>} $text] {
+        lassign $match start end
+
+        if {[string index $text $start+1] ne "/"} {
+            set attributes [string trimleft [string range $text $start+2 $end-1]]
+            lappend opened [list $start $end $attributes]
+            continue
+        }
+
+        # Closing tag without opening tag: plain text.
+        if {![llength $opened]} {continue}
+
+        lassign [lindex $opened end] open_start open_end attributes
+        set opened [lrange $opened 0 end-1]
+
+        if {![string match "*=*" $attributes]} {
+            error "zesty(error): Unsupported style format: $attributes"
+        }
+
+        set attrs {}
+        if {$withAttrs} {
+            set attrs [zesty::parseEqualAttributes $attributes]
+
+            if {[dict exists $attrs link] && [string is true -strict [dict get $attrs link]]} {
+                set inner [string range $text $open_end+1 $start-1]
+                dict set attrs link [regsub -all {<s\s+[^>]+>|</s>} $inner {}]
+            }
+        }
+
+        # Nested tags are listed when their closing tag is found, so the
+        # list must be sorted (side by side tags are already in order).
+        if {[llength $tags] && $open_start < [lindex $tags end 0]} {
+            set nested 1
+        }
+        lappend tags [list $open_start $open_end $attrs] [list $start $end {}]
+    }
+    # Opening tags left in 'opened' have no closing tag: plain text.
+    if {[info exists nested]} {
+        set tags [lsort -integer -index 0 $tags]
+    }
+
+    # 2. Walk the paired tags in order, with a stack of merged attributes.
+    set segments {}
+    set stack {}
+    set pos 0
+
+    foreach tag $tags {
+        lassign $tag start end attrs
+
+        set content [string range $text $pos $start-1]
+        if {$content ne ""} {
+            if {[llength $stack]} {
+                lappend segments [list 1 $content [lindex $stack end]]
+            } else {
+                lappend segments [list 0 $content {}]
+            }
+        }
+
+        if {[string index $text $start+1] eq "/"} {
+            set stack [lrange $stack 0 end-1]
+        } elseif {[llength $stack] && [dict size $attrs]} {
+            lappend stack [dict merge [lindex $stack end] $attrs]
+        } elseif {[llength $stack]} {
+            lappend stack [lindex $stack end]
+        } else {
+            lappend stack $attrs
+        }
+        set pos [expr {$end + 1}]
+    }
+
+    set content [string range $text $pos end]
+    if {$content ne "" || ![llength $segments]} {
+        lappend segments [list 0 $content {}]
+    }
+
+    return $segments
+}
+
+proc zesty::StyledText {text attrs} {
+    # Wraps text in a style tag, the reverse of zesty::StyleSegments.
+    #
+    # text  - text to wrap
+    # attrs - dictionary of tag attributes
+    #
+    # Returns: the tagged text, or text as is if attrs is empty.
+    if {![dict size $attrs]} {
+        return $text
+    }
+
+    return "<s [zesty::formatEqualAttributes $attrs]>$text</s>"
 }
 
 proc zesty::parseTypeFilters {text filters} {
@@ -121,17 +219,16 @@ proc zesty::parseTypeFilters {text filters} {
     # filters - key-value pairs of filter types and styles
     #
     # Returns: the text with type-specific styling applied.
-    set result $text
-
     zesty::validateKeyValuePairs "args" $filters
-    
-    # Process each filter
+
+    # Build the regsub pattern and replacement of each filter
+    set rules {}
     foreach {key style} $filters {
         # Validate style
         zesty::validateKeyValuePairs "style" $style
 
         set pattern {}
-        
+
         # Build replacement pattern according to type
         switch -exact -- $key {
             "num" {
@@ -157,24 +254,45 @@ proc zesty::parseTypeFilters {text filters} {
             }
         }
 
-        set result [regsub -all \
-            $pattern \
-            $result \
-            [zesty::parseStyleDictToXML "\\1" $style] \
-        ]
+        lappend rules $pattern [zesty::parseStyleDictToXML "\\1" $style]
     }
-    
+
+    # Filters apply to the content of user tags too (the nested tags
+    # they create are flattened later), but not inside the tags added
+    # by a previous filter: the digits of an URL stay part of the URL.
+    set result ""
+    foreach segment [zesty::StyleSegments $text] {
+        lassign $segment styled content attrs
+        foreach {pattern replacement} $rules {
+            set content [zesty::regsubOutsideTags $pattern $content $replacement]
+        }
+        append result [zesty::StyledText $content $attrs]
+    }
+
     return $result
 }
 
-proc zesty::parseEqualFormat {attributes} {
-    # Parses the format with equal sign (fg=red bold=true).
-    # Handles quoted values and converts style dictionary to ANSI.
+proc zesty::regsubOutsideTags {pattern text replacement} {
+    # Applies 'regsub -all' to the parts of text located outside
+    # <s ...>...</s> tags.
     #
-    # attributes - attribute string with key=value pairs
+    # pattern     - regular expression
+    # text        - input text, possibly containing style tags
+    # replacement - replacement string (same syntax as regsub)
     #
-    # Returns: ANSI escape codes for the parsed attributes.
-    return [zesty::parseStyleDictToANSI [zesty::parseEqualAttributes $attributes]]
+    # Returns: the text with replacements applied outside tags.
+    set result ""
+
+    foreach segment [zesty::StyleSegments $text] {
+        lassign $segment styled content attrs
+        if {$styled} {
+            append result [zesty::StyledText $content $attrs]
+        } else {
+            append result [regsub -all $pattern $content $replacement]
+        }
+    }
+
+    return $result
 }
 
 proc zesty::parseEqualAttributes {attributes} {
@@ -187,9 +305,9 @@ proc zesty::parseEqualAttributes {attributes} {
     # Returns: A dictionary of attribute names and values.
     set style_dict {}
     set pattern {(\w+)\s*=\s*(?:'([^']*)'|\"([^\"]*)\"|([^\s]+))}
-    
+
     set matches [regexp -all -inline $pattern $attributes]
-    
+
     # Process each match
     foreach {match key val_single val_double val_plain} $matches {
         set value ""
@@ -205,6 +323,44 @@ proc zesty::parseEqualAttributes {attributes} {
     return $style_dict
 }
 
+proc zesty::NormalizeStyle {style_dict} {
+    # Converts a style dictionary into tag attributes: 'fg' and 'bg'
+    # as color codes (unknown colors are dropped), enabled terminal
+    # styles as 1 and 'link' as is. Shared by parseStyleDictToANSI
+    # and parseStyleDictToXML.
+    #
+    # style_dict - dictionary containing style specifications
+    #
+    # Returns: A dictionary of attributes, in the order fg, bg,
+    # terminal styles, link.
+    variable termstyles
+    set attrs {}
+
+    foreach key {fg bg} {
+        if {[dict exists $style_dict $key]} {
+            set code [zesty::getColorCode [dict get $style_dict $key]]
+            if {$code ne ""} {
+                dict set attrs $key $code
+            }
+        }
+    }
+
+    foreach style_name [dict keys $termstyles] {
+        if {[dict exists $style_dict $style_name]} {
+            if {[zesty::styleEnabled $style_name [dict get $style_dict $style_name]]} {
+                dict set attrs $style_name 1
+            }
+        }
+    }
+
+    # Hyperlink: 'link 1' targets the text itself, otherwise the given URL.
+    if {[dict exists $style_dict link]} {
+        dict set attrs link [dict get $style_dict link]
+    }
+
+    return $attrs
+}
+
 proc zesty::parseStyleDictToANSI {style_dict} {
     # Parses style dictionary to ANSI escape codes.
     #
@@ -212,36 +368,54 @@ proc zesty::parseStyleDictToANSI {style_dict} {
     #
     # Returns: concatenated ANSI escape codes for foreground,
     # background colors and terminal styles.
-    variable termstyles
     set ansi_codes ""
-    
-    # Processing style dictionary options
-    if {[dict exists $style_dict fg]} {
-        set fg_color [dict get $style_dict fg]
-        set fg_code [zesty::getColorCode $fg_color]
-        if {$fg_code ne ""} {
-            append ansi_codes [zesty::colorANSICode $fg_code 0]
+
+    dict for {key value} [zesty::NormalizeStyle $style_dict] {
+        switch -exact -- $key {
+            fg      {append ansi_codes [zesty::colorANSICode $value 0]}
+            bg      {append ansi_codes [zesty::colorANSICode $value 1]}
+            link    {}
+            default {append ansi_codes [zesty::styleANSICode $key]}
         }
     }
-    
-    if {[dict exists $style_dict bg]} {
-        set bg_color [dict get $style_dict bg]
-        set bg_code [zesty::getColorCode $bg_color]
-        if {$bg_code ne ""} {
-            append ansi_codes [zesty::colorANSICode $bg_code 1]
-        }
-    }
-    
-    # Processing styles
-    foreach style_name [dict keys $termstyles] {
-        if {[dict exists $style_dict $style_name]} {
-            if {[dict get $style_dict $style_name]} {
-                append ansi_codes [zesty::styleANSICode $style_name]
-            }
-        }
-    }
-    
+
     return $ansi_codes
+}
+
+proc zesty::styleEnabled {name value} {
+    # Checks if a terminal style (bold, italic...) is enabled.
+    #
+    # name  - style name
+    # value - style value, must be a boolean
+    #
+    # Returns: 1 if the style is enabled, 0 otherwise, or throws an
+    # error if value is not a boolean.
+    if {![string is boolean -strict $value]} {
+        error "zesty(error): style '$name' must be a boolean value,\
+            got '$value'."
+    }
+
+    return [string is true $value]
+}
+
+proc zesty::formatEqualAttributes {attrs} {
+    # Formats a dictionary as attributes with equal sign
+    # (fg=red bold=1), the reverse of zesty::parseEqualAttributes.
+    # Empty values and values containing spaces are quoted.
+    #
+    # attrs - dictionary of attribute names and values
+    #
+    # Returns: The attribute string.
+    set result {}
+    dict for {key value} $attrs {
+        if {$value eq "" || [regexp {\s} $value]} {
+            set quote [expr {[string first "'" $value] >= 0 ? "\"" : "'"}]
+            set value $quote$value$quote
+        }
+        lappend result "${key}=${value}"
+    }
+
+    return [join $result " "]
 }
 
 proc zesty::parseStyleDictToXML {text style_dict} {
@@ -251,8 +425,7 @@ proc zesty::parseStyleDictToXML {text style_dict} {
     # style_dict - dictionary containing style specifications
     #
     # Returns: text wrapped in <s> tags with style attributes.
-    variable termstyles
-    
+
     # If no style to apply, return text as is
     if {$style_dict eq ""} {
         return $text
@@ -260,123 +433,40 @@ proc zesty::parseStyleDictToXML {text style_dict} {
 
     # Process constructor arguments with validation
     zesty::validateKeyValuePairs "args" $style_dict
-    
-    # Build general style attributes
-    set general_attrs {}
-    
-    # Processing style dictionary options
-    if {[dict exists $style_dict fg]} {
-        set fg_color [dict get $style_dict fg]
-        set fg_code [zesty::getColorCode $fg_color]
-        if {$fg_code ne ""} {
-            dict set general_attrs fg $fg_code
-        }
-    }
-    
-    if {[dict exists $style_dict bg]} {
-        set bg_color [dict get $style_dict bg]
-        set bg_code [zesty::getColorCode $bg_color]
-        if {$bg_code ne ""} {
-            dict set general_attrs bg $bg_code
-        }
-    }
-    
-    # Processing styles.
-    foreach style_name [dict keys $termstyles] {
-        if {[dict exists $style_dict $style_name]} {
-            if {[dict get $style_dict $style_name]} {
-                dict set general_attrs $style_name 1
-            }
-        }
-    }
 
-    # Hyperlink: 'link 1' targets the text itself, otherwise the given URL.
-    if {[dict exists $style_dict link]} {
-        dict set general_attrs link [dict get $style_dict link]
-    }
+    # Build general style attributes
+    set general_attrs [zesty::NormalizeStyle $style_dict]
 
     # If no valid attributes, return text as is
     if {![dict size $general_attrs]} {
         return $text
     }
-    
-    # Check if there are existing tags in the text
-    if {![string match {*<s*</s>*} $text]} {
-        # No existing tags, original behavior
-        set xml_codes {}
-        dict for {key value} $general_attrs {
-            lappend xml_codes "${key}=${value}"
-        }
-        return "<s [join $xml_codes " "]>$text</s>"
+
+    # No existing tags: wrap the whole text
+    set segments [zesty::StyleSegments $text]
+    if {([llength $segments] == 1) && ![lindex $segments 0 0]} {
+        return [zesty::StyledText $text $general_attrs]
     }
 
-    # There are existing (flat) tags, process them directly
-    set result ""
-    set current_pos 0
-    set re {<s\s+([^>]*)>([^<]*)</s>}
-    
-    while {$current_pos < [string length $text]} {
-        # Search for next <s> tag
-        if {[regexp -indices -start $current_pos $re $text match attr_indices content_indices]} {
-            lassign $match match_start match_end
-            lassign $attr_indices attr_start attr_end
-            lassign $content_indices content_start content_end
-            
-            # Add text before tag (with general style)
-            if {$current_pos < $match_start} {
-                set before_text [string range $text $current_pos $match_start-1]
-                if {$before_text ne ""} {
-                    set attrs_list {}
-                    dict for {key value} $general_attrs {
-                        lappend attrs_list "${key}=${value}"
-                    }
-                    append result "<s [join $attrs_list " "]>$before_text</s>"
-                }
-            }
-            
-            # Process existing tag
-            set existing_attrs_string [string range $text $attr_start $attr_end]
-            set content [string range $text $content_start $content_end]
-            
-            # Parse existing attributes
-            set existing_attrs {}
-            foreach attr [split $existing_attrs_string] {
-                set attr [string trim $attr]
-                if {$attr eq ""} continue
-                
-                if {[regexp {^([^=]+)=(.+)$} $attr -> key value]} {
-                    dict set existing_attrs $key $value
-                }
-            }
-            
-            # Merge attributes (general first, then existing for priority)
-            set merged_attrs $general_attrs
-            dict for {key value} $existing_attrs {
-                dict set merged_attrs $key $value
-            }
-            
-            # Build merged tag
-            set merged_attrs_list {}
-            dict for {key value} $merged_attrs {
-                lappend merged_attrs_list "${key}=${value}"
-            }
-            append result "<s [join $merged_attrs_list " "]>$content</s>"
-            
-            set current_pos [expr {$match_end + 1}]
-        } else {
-            # No more tags, add remaining text with general style
-            set remaining_text [string range $text $current_pos end]
-            if {$remaining_text ne ""} {
-                set attrs_list {}
-                dict for {key value} $general_attrs {
-                    lappend attrs_list "${key}=${value}"
-                }
-                append result "<s [join $attrs_list " "]>$remaining_text</s>"
-            }
-            break
+    # 'link 1' targets the whole visible text, not each segment
+    if {[dict exists $general_attrs link] &&
+        [string is true -strict [dict get $general_attrs link]]
+    } {
+        set visible ""
+        foreach segment $segments {
+            append visible [lindex $segment 1]
         }
+        dict set general_attrs link $visible
     }
-    
+
+    # Existing tags: merge attributes (general first, then existing
+    # for priority)
+    set result ""
+    foreach segment $segments {
+        lassign $segment styled content attrs
+        append result [zesty::StyledText $content [dict merge $general_attrs $attrs]]
+    }
+
     return $result
 }
 
@@ -390,7 +480,7 @@ proc zesty::parseContentLine {line} {
 
     # First, parse <s> tags
     set parsed_line [zesty::extractVisibleText $line]
-        
+
     return [list \
         original_line $line \
         parsed_line $parsed_line \

@@ -69,28 +69,14 @@ proc zesty::codeHighlights {args} {
     set code [dict get $options code]
     if {$code eq {}} {error "zesty(error): code data is empty."}
 
-    set handle "null"
-    if {[zesty::isWindows]} {
-        set handle [zesty::win32::getStdOutHandle]
-    }
-
-    set term_width [zesty::getTermWidth $handle]
+    lassign [zesty::getTerminalSize] term_width
     set maxlen [dict get $options maxlen]
     if {($maxlen ne "") && ($term_width > $maxlen)} {
         set term_width $maxlen
     }
 
-    # Limit code to terminal width.
-    set limit [expr {$term_width - 4}]
-    set result {}
-    foreach line [split $code "\n"] {
-        if {[string length $line] > $limit} {
-            set line "[string range $line 0 $limit]..."
-        }
-        lappend result $line
-    }
-
-    set code [join $result "\n"]
+    # Lines are limited to the terminal width after highlighting (see
+    # below): cutting the code before would change how it is parsed.
 
     set result {}
     set last_pos 0
@@ -184,11 +170,65 @@ proc zesty::codeHighlights {args} {
         set result [zesty::visualizeVerticalGuides $result $style $reset]
     }
 
+    # Limit lines to the terminal width, keeping one spare column (as
+    # zesty::rule) and the room needed by line numbers ("NN  ").
+    set lines [split $result "\n"]
+    set maxWidth [expr {$term_width - 1}]
+    if {[dict get $options linesNumber show]} {
+        incr maxWidth [expr {-([string length [llength $lines]] + 2)}]
+    }
+    set truncated {}
+    foreach line $lines {
+        lappend truncated [zesty::TruncateAnsiLine $line $maxWidth]
+    }
+    set result [join $truncated "\n"]
+
     # Apply line number visualization if requested.
     if {[dict get $options linesNumber show]} {
         set value [dict get $options linesNumber style]
         set style [zesty::parseStyleDictToANSI $value]
         set result [zesty::visualizeLinesNumber $result $style $reset]
+    }
+
+    return $result
+}
+
+proc zesty::TruncateAnsiLine {line maxWidth} {
+    # Truncates a line containing ANSI escape sequences to a maximum
+    # visual width, ending with "..." when it is cut.
+    #
+    # line     - line to truncate (may contain ANSI escape sequences)
+    # maxWidth - maximum width in terminal columns
+    #
+    # Returns the truncated line.
+    # CSI sequences (colors...) and OSC sequences (hyperlinks) take no
+    # column.
+    set escapeRe {\033\[[0-9;?]*[A-Za-z]|\033\][^\033\007]*(?:\033\\|\007)}
+    set visible [regsub -all $escapeRe $line {}]
+    if {[zesty::strLength $visible] <= $maxWidth} {
+        return $line
+    }
+
+    set ellipsis [expr {$maxWidth >= 4 ? "..." : ""}]
+    set target   [expr {max(0, $maxWidth - [string length $ellipsis])}]
+    set result   ""
+    set width    0
+
+    # Escape sequences are copied as is, characters are counted.
+    foreach {- escape text} [regexp -all -inline [format {(%s)|([^\033]+)} $escapeRe] $line] {
+        if {$escape ne ""} {
+            append result $escape
+            continue
+        }
+        foreach char [zesty::Clusters $text] {
+            set charWidth [zesty::strLength $char]
+            if {$width + $charWidth > $target} {
+                # Also closes a hyperlink cut in its text.
+                return "$result[zesty::resetANSIStyle]\033\]8;;\033\\$ellipsis"
+            }
+            append result $char
+            incr width $charWidth
+        }
     }
 
     return $result

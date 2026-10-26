@@ -20,7 +20,7 @@ proc zesty::rule {args} {
         align  -validvalue formatAlign  -type str       -default "center"
     }
     zesty::def options "-style" -validvalue formatStyle -type any|none -default ""
-    zesty::def options "-char"  -validvalue formatLChar -type str      -default "─"
+    zesty::def options "-char"  -validvalue formatLChar -type str|num  -default "─"
     zesty::def options "-width" -validvalue formatPad   -type num|none -default ""
 
     # Merge options and args
@@ -35,7 +35,7 @@ proc zesty::rule {args} {
 
     set char  [dict get $options char]
     set style [dict get $options style]
-    set name  [dict get $options title name]
+    set name  [zesty::ExpandTabs [dict get $options title name]]
 
     # The title needs at least its surrounding spaces, a line character
     # on each side and room for an ellipsis.
