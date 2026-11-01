@@ -45,7 +45,7 @@
 package require Tcl 8.6-
 
 namespace eval zesty {
-    variable version 0.4
+    variable version 0.5a0
 }
 
 package provide zesty $::zesty::version

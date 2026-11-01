@@ -72,7 +72,7 @@ proc zesty::parseStyle {text base_style {no_reset 0} {filters {}} {command {}}} 
         if {$link ne ""} {
             # OSC 8 hyperlink: the terminal shows the content and
             # opens the link on Ctrl+click (ignored if unsupported).
-            append processed_text "\033\]8;;$link\033\\" $content "\033\]8;;\033\\"
+            append processed_text [zesty::hyperlinkOpen $link] $content [zesty::hyperlinkClose]
         } else {
             append processed_text $content
         }

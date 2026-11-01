@@ -400,9 +400,9 @@ proc zesty::hexToRGB {hex} {
     set hex_clean [string trimleft $hex "#"]
     
     # Extract components
-    set r [expr 0x[string range $hex_clean 0 1]]
-    set g [expr 0x[string range $hex_clean 2 3]]
-    set b [expr 0x[string range $hex_clean 4 5]]
+    scan [string range $hex_clean 0 1] %x r
+    scan [string range $hex_clean 2 3] %x g
+    scan [string range $hex_clean 4 5] %x b
     
     return [list $r $g $b]
 }
@@ -732,6 +732,22 @@ proc zesty::showCursor {} {
     # Returns nothing. 
     puts -nonewline "\033\[?25h"
     flush stdout
+}
+
+proc zesty::hyperlinkOpen {url} {
+    # Opens a hyperlink in the terminal.
+    #
+    # url - hyperlink URL
+    #
+    # Returns the sequence to open the hyperlink. 
+    return "\033\]8;;${url}\033\\"
+}
+
+proc zesty::hyperlinkClose {} {
+    # Closes a hyperlink in the terminal.
+    #
+    # Returns the sequence to close the hyperlink.
+    return "\033\]8;;\033\\"
 }
 
 proc zesty::throwError {msg} {

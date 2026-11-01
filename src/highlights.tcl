@@ -224,7 +224,7 @@ proc zesty::TruncateAnsiLine {line maxWidth} {
             set charWidth [zesty::strLength $char]
             if {$width + $charWidth > $target} {
                 # Also closes a hyperlink cut in its text.
-                return "$result[zesty::resetANSIStyle]\033\]8;;\033\\$ellipsis"
+                return "$result[zesty::resetANSIStyle][zesty::hyperlinkClose]$ellipsis"
             }
             append result $char
             incr width $charWidth
