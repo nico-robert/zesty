@@ -734,6 +734,22 @@ proc zesty::showCursor {} {
     flush stdout
 }
 
+proc zesty::hyperlinkOpen {url} {
+    # Opens a hyperlink in the terminal.
+    #
+    # url - hyperlink URL
+    #
+    # Returns the sequence to open the hyperlink. 
+    return "\033\]8;;${url}\033\\"
+}
+
+proc zesty::hyperlinkClose {} {
+    # Closes a hyperlink in the terminal.
+    #
+    # Returns the sequence to close the hyperlink.
+    return "\033\]8;;\033\\"
+}
+
 proc zesty::throwError {msg} {
     # Throws an error, restoring the cursor visibility first.
     #
