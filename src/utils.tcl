@@ -400,9 +400,9 @@ proc zesty::hexToRGB {hex} {
     set hex_clean [string trimleft $hex "#"]
     
     # Extract components
-    set r [expr 0x[string range $hex_clean 0 1]]
-    set g [expr 0x[string range $hex_clean 2 3]]
-    set b [expr 0x[string range $hex_clean 4 5]]
+    scan [string range $hex_clean 0 1] %x r
+    scan [string range $hex_clean 2 3] %x g
+    scan [string range $hex_clean 4 5] %x b
     
     return [list $r $g $b]
 }
